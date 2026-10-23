@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Entity.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Entity.java</span></div><h1>Entity.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.scene.canvas.GraphicsContext;
+
+/**
+ * Classe de base de tout ce qui bouge ou s'affiche dans le jeu : le joueur, les items, les obstacles.
+ * Elle porte une position et une taille, et impose à chaque sous-classe de savoir se mettre à jour
+ * et se dessiner.
+ */
+public abstract class Entity {
+    /** Position horizontale du coin supérieur gauche, en pixels. */
+    protected double x;
+    /** Position verticale du coin supérieur gauche, en pixels. */
+    protected double y;
+    /** Largeur de l'entité, en pixels. */
+    protected double width;
+    /** Hauteur de l'entité, en pixels. */
+    protected double height;
+
+    /**
+     * Crée une entité à une position donnée avec une taille donnée.
+     *
+     * @param x      position horizontale du coin supérieur gauche
+     * @param y      position verticale du coin supérieur gauche
+     * @param width  largeur en pixels
+     * @param height hauteur en pixels
+     */
+<span class="fc" id="L28">    protected Entity(double x, double y, double width, double height) {</span>
+<span class="fc" id="L29">        this.x = x;</span>
+<span class="fc" id="L30">        this.y = y;</span>
+<span class="fc" id="L31">        this.width = width;</span>
+<span class="fc" id="L32">        this.height = height;</span>
+<span class="fc" id="L33">    }</span>
+
+    /**
+     * Met à jour l'entité pour une image.
+     *
+     * @param dt temps écoulé depuis la dernière image, en secondes
+     */
+    public abstract void update(double dt);
+
+    /**
+     * Dessine l'entité.
+     *
+     * @param gc contexte graphique du canvas
+     */
+    public abstract void render(GraphicsContext gc);
+
+    /**
+     * Donne la zone de collision de l'entité.
+     *
+     * @return une nouvelle {@link Hitbox} à la position et à la taille actuelles
+     */
+    public Hitbox getHitbox() {
+<span class="fc" id="L55">        return new Hitbox(x, y, width, height);</span>
+    }
+
+    /**
+     * Donne la position horizontale.
+     *
+     * @return la position horizontale en pixels
+     */
+<span class="fc" id="L63">    public double getX() { return x; }</span>
+
+    /**
+     * Donne la position verticale.
+     *
+     * @return la position verticale en pixels
+     */
+<span class="fc" id="L70">    public double getY() { return y; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

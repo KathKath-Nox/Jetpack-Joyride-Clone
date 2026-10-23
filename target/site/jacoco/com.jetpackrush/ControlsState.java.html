@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ControlsState.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">ControlsState.java</span></div><h1>ControlsState.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.util.Optional;
+
+import com.jetpackrush.KeyBindings.Action;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.input.KeyCode;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
+
+/**
+ * ÉCRAN « TOUCHES » : permet au joueur de changer les touches du jeu.
+ *
+ * &lt;p&gt;Flèches haut/bas pour choisir une ligne, Entrée ou Espace pour la valider, Échap pour revenir
+ * au menu. Sur une action (Jetpack, Pause), la validation passe en écoute : la prochaine touche
+ * appuyée devient la nouvelle commande. Une touche déjà utilisée ou réservée (Entrée, flèches, F11)
+ * est refusée avec un message. « Réinitialiser » remet les touches par défaut.
+ */
+public class ControlsState implements GameState {
+
+<span class="fc" id="L26">    private static final Action[] ACTIONS = Action.values();</span>
+
+    // Lignes de l'écran : une par action, puis « Réinitialiser » et « Retour »
+<span class="fc" id="L29">    static final int RESET = ACTIONS.length;</span>
+<span class="fc" id="L30">    static final int BACK = ACTIONS.length + 1;</span>
+<span class="fc" id="L31">    private static final int ROWS = ACTIONS.length + 2;</span>
+
+    private static final double PANEL_WIDTH = 760;
+    private static final double PANEL_Y = 150;
+    private static final double TITLE_HEIGHT = 110;
+    private static final double ROW_HEIGHT = 60;
+<span class="fc" id="L37">    private static final double PANEL_HEIGHT = TITLE_HEIGHT + ROWS * ROW_HEIGHT + 20;</span>
+    private static final double MARGIN = 40;
+
+<span class="fc" id="L40">    private static final Color PANEL = Color.rgb(0, 0, 0, 0.7);</span>
+<span class="fc" id="L41">    private static final Color SELECTED = Color.GOLD;</span>
+<span class="fc" id="L42">    private static final Color NOT_SELECTED = Color.LIGHTGRAY;</span>
+<span class="fc" id="L43">    private static final Color ERROR = Color.ORANGERED;</span>
+
+    private final Game game;
+    private final KeyboardInput input;
+    private final KeyBindings bindings;
+    private int selected;
+    private boolean listening;
+<span class="fc" id="L50">    private String message = &quot;&quot;;</span>
+
+    // Chargés au premier affichage : JavaFX ne peut pas créer d'Image sans fenêtre ouverte
+    private Image background;
+    private Font font;
+    private Font smallFont;
+
+    /**
+     * Crée l'écran des touches.
+     *
+     * @param game  le jeu, pour revenir au menu
+     * @param input le clavier, qui contient la configuration des touches
+     */
+<span class="fc" id="L63">    public ControlsState(Game game, KeyboardInput input) {</span>
+<span class="fc" id="L64">        this.game = game;</span>
+<span class="fc" id="L65">        this.input = input;</span>
+<span class="fc" id="L66">        this.bindings = input.getBindings();</span>
+<span class="fc" id="L67">    }</span>
+
+    private void loadAssets() {
+<span class="nc" id="L70">        try (InputStream image = Assets.open(&quot;title-bg.png&quot;)) {</span>
+<span class="nc" id="L71">            background = new Image(image, App.WIDTH, App.HEIGHT, false, true);</span>
+<span class="nc" id="L72">        } catch (IOException e) {</span>
+<span class="nc" id="L73">            throw new UncheckedIOException(e);</span>
+<span class="nc" id="L74">        }</span>
+<span class="nc" id="L75">        font = Assets.font(32);</span>
+<span class="nc" id="L76">        smallFont = Assets.font(24);</span>
+<span class="nc" id="L77">    }</span>
+
+    @Override
+    public void update(double dt) {
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        if (listening) {</span>
+<span class="fc" id="L82">            listen();</span>
+<span class="fc" id="L83">            return;</span>
+        }
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (input.wasPressed(KeyCode.UP)) {</span>
+<span class="fc" id="L86">            selected = (selected + ROWS - 1) % ROWS;</span>
+<span class="fc" id="L87">            message = &quot;&quot;;</span>
+        }
+<span class="fc bfc" id="L89" title="All 2 branches covered.">        if (input.wasPressed(KeyCode.DOWN)) {</span>
+<span class="fc" id="L90">            selected = (selected + 1) % ROWS;</span>
+<span class="fc" id="L91">            message = &quot;&quot;;</span>
+        }
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        if (input.wasPressed(KeyCode.ESCAPE)) {</span>
+<span class="fc" id="L94">            game.backToMenu();</span>
+<span class="fc bfc" id="L95" title="All 4 branches covered.">        } else if (input.wasPressed(KeyCode.SPACE) || input.wasPressed(KeyCode.ENTER)) {</span>
+<span class="fc" id="L96">            activate();</span>
+        }
+<span class="fc" id="L98">    }</span>
+
+    // Valide la ligne choisie : écoute une touche, remet les réglages par défaut ou revient au menu
+    private void activate() {
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        if (selected &lt; ACTIONS.length) {</span>
+<span class="fc" id="L103">            listening = true;</span>
+<span class="fc" id="L104">            message = &quot;&quot;;</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">        } else if (selected == RESET) {</span>
+<span class="fc" id="L106">            bindings.reset();</span>
+<span class="fc" id="L107">            message = &quot;&quot;;</span>
+        } else {
+<span class="fc" id="L109">            game.backToMenu();</span>
+        }
+<span class="fc" id="L111">    }</span>
+
+    // Attend la prochaine touche et l'assigne à l'action choisie, sauf conflit ou touche réservée
+    private void listen() {
+<span class="fc" id="L115">        Optional&lt;KeyCode&gt; pressed = input.anyJustPressed();</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">        if (pressed.isEmpty()) {</span>
+<span class="nc" id="L117">            return;</span>
+        }
+<span class="fc" id="L119">        listening = false;</span>
+<span class="fc" id="L120">        Action action = ACTIONS[selected];</span>
+<span class="fc" id="L121">        KeyCode key = pressed.get();</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">        if (bindings.bind(action, key)) {</span>
+<span class="fc" id="L123">            message = &quot;&quot;;</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        } else if (bindings.isReserved(key)) {</span>
+<span class="fc" id="L125">            message = &quot;TOUCHE RESERVEE&quot;;</span>
+        } else {
+<span class="fc" id="L127">            String owner = bindings.conflictWith(action, key)</span>
+<span class="fc" id="L128">                    .map(other -&gt; other.getLabel().toUpperCase())</span>
+<span class="fc" id="L129">                    .orElse(&quot;&quot;);</span>
+<span class="fc" id="L130">            message = &quot;DEJA UTILISEE PAR &quot; + owner;</span>
+        }
+<span class="fc" id="L132">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        if (background == null) {</span>
+<span class="nc" id="L137">            loadAssets();</span>
+        }
+<span class="nc" id="L139">        gc.save();</span>
+<span class="nc" id="L140">        gc.drawImage(background, 0, 0);</span>
+
+<span class="nc" id="L142">        double centerX = App.WIDTH / 2.0;</span>
+<span class="nc" id="L143">        double panelX = centerX - PANEL_WIDTH / 2;</span>
+<span class="nc" id="L144">        gc.setFill(PANEL);</span>
+<span class="nc" id="L145">        gc.fillRoundRect(panelX, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT, 28, 28);</span>
+
+<span class="nc" id="L147">        gc.setFont(font);</span>
+<span class="nc" id="L148">        gc.setTextAlign(TextAlignment.CENTER);</span>
+<span class="nc" id="L149">        gc.setFill(SELECTED);</span>
+<span class="nc" id="L150">        gc.fillText(&quot;TOUCHES&quot;, centerX, PANEL_Y + 55);</span>
+
+<span class="nc bnc" id="L152" title="All 2 branches missed.">        for (int i = 0; i &lt; ROWS; i++) {</span>
+<span class="nc" id="L153">            double y = PANEL_Y + TITLE_HEIGHT + i * ROW_HEIGHT;</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">            gc.setFill(i == selected ? SELECTED : NOT_SELECTED);</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">            if (i &lt; ACTIONS.length) {</span>
+<span class="nc" id="L156">                gc.setTextAlign(TextAlignment.LEFT);</span>
+<span class="nc" id="L157">                gc.fillText(ACTIONS[i].getLabel().toUpperCase(), panelX + MARGIN, y);</span>
+<span class="nc" id="L158">                gc.setTextAlign(TextAlignment.RIGHT);</span>
+<span class="nc bnc" id="L159" title="All 4 branches missed.">                String key = listening &amp;&amp; i == selected</span>
+<span class="nc" id="L160">                        ? &quot;APPUYEZ SUR UNE TOUCHE&quot;</span>
+<span class="nc" id="L161">                        : bindings.get(ACTIONS[i]).getName().toUpperCase();</span>
+<span class="nc" id="L162">                gc.fillText(key, panelX + PANEL_WIDTH - MARGIN, y);</span>
+<span class="nc" id="L163">            } else {</span>
+<span class="nc" id="L164">                gc.setTextAlign(TextAlignment.CENTER);</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">                gc.fillText(i == RESET ? &quot;REINITIALISER&quot; : &quot;RETOUR&quot;, centerX, y);</span>
+            }
+        }
+
+<span class="nc" id="L169">        gc.setTextAlign(TextAlignment.CENTER);</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        if (!message.isEmpty()) {</span>
+<span class="nc" id="L171">            gc.setFill(ERROR);</span>
+<span class="nc" id="L172">            gc.fillText(message, centerX, PANEL_Y + PANEL_HEIGHT + 50);</span>
+        }
+<span class="nc" id="L174">        gc.setFont(smallFont);</span>
+<span class="nc" id="L175">        gc.setFill(NOT_SELECTED);</span>
+<span class="nc" id="L176">        gc.fillText(&quot;FLECHES POUR CHOISIR   ENTREE POUR VALIDER   ECHAP POUR RETOUR&quot;,</span>
+                centerX, App.HEIGHT - 30);
+<span class="nc" id="L178">        gc.restore();</span>
+<span class="nc" id="L179">    }</span>
+
+    int getSelected() {
+<span class="fc" id="L182">        return selected;</span>
+    }
+
+    boolean isListening() {
+<span class="fc" id="L186">        return listening;</span>
+    }
+
+    String getMessage() {
+<span class="fc" id="L190">        return message;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

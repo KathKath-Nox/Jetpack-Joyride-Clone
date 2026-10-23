@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Missile.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Missile.java</span></div><h1>Missile.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.function.Supplier;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
+
+/** Missile : une alerte apparaît d'abord et suit le joueur, puis le missile fonce vers la gauche (phases WARNING puis FLYING). */
+public class Missile extends Obstacle {
+
+    /** Largeur du missile, en pixels. */
+    public static final double WIDTH = 70;
+    /** Hauteur du missile, en pixels. */
+    public static final double HEIGHT = 26;
+    /** Durée de l'avertissement avant le tir, en secondes. */
+    public static final double WARNING_TIME = 1.5;
+    /** Durée avant le tir pendant laquelle la position visée n'est plus mise à jour, en secondes. */
+    public static final double LOCK_TIME = 0.5;
+    /** Vitesse supplémentaire du missile par rapport au défilement, en pixels par seconde. */
+    public static final double EXTRA_SPEED = 500;
+
+    private static final double ALERT_X = App.WIDTH - 60;
+    private static final double ALERT_SIZE = 44;
+    private static final double ICON_SIZE = 56;
+
+    private static final String BODY = &quot;missile.png&quot;;
+    private static final String COMING = &quot;missile_coming.png&quot;;
+    private static final String TARGET = &quot;missile_target.png&quot;;
+
+<span class="fc" id="L31">    private enum Phase {</span>
+<span class="fc" id="L32">        WARNING,</span>
+<span class="fc" id="L33">        FLYING</span>
+    }
+
+    private final Supplier&lt;Hitbox&gt; target;
+<span class="fc" id="L37">    private Phase phase = Phase.WARNING;</span>
+    private double timer;
+
+    /**
+     * Crée un missile.
+     *
+     * @param x position horizontale de départ
+     * @param y position verticale de départ
+     * @param speed vitesse de jeu partagée
+     * @param target fournit la hitbox du joueur visé
+     */
+    public Missile(double x, double y, GameSpeed speed, Supplier&lt;Hitbox&gt; target) {
+<span class="fc" id="L49">        super(x, y, WIDTH, HEIGHT, speed);</span>
+<span class="fc" id="L50">        this.target = target;</span>
+<span class="fc" id="L51">    }</span>
+
+    @Override
+    public ObstacleType getType() {
+<span class="fc" id="L55">        return ObstacleType.MISSILE;</span>
+    }
+
+    /**
+     * @return true si le missile est encore en phase d'avertissement
+     */
+    public boolean isWarning() {
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">        return phase == Phase.WARNING;</span>
+    }
+
+    /**
+     * @return true si le missile est en train de voler
+     */
+    public boolean isFlying() {
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">        return phase == Phase.FLYING;</span>
+    }
+
+    /**
+     * @return la position verticale de l'alerte affichée avant le tir
+     */
+    public double getAlertY() {
+<span class="nc" id="L76">        return y + HEIGHT / 2;</span>
+    }
+
+    @Override
+    public void update(double dt) {
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        if (phase == Phase.WARNING) {</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">            if (timer &lt; WARNING_TIME - LOCK_TIME) {</span>
+<span class="fc" id="L83">                aim();</span>
+            }
+<span class="fc" id="L85">            timer += dt;</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">            if (timer &gt;= WARNING_TIME) {</span>
+<span class="fc" id="L87">                phase = Phase.FLYING;</span>
+            }
+<span class="fc" id="L89">            return;</span>
+        }
+<span class="fc" id="L91">        x -= (getSpeed().getSpeed() + EXTRA_SPEED) * dt;</span>
+<span class="fc" id="L92">    }</span>
+
+    private void aim() {
+<span class="fc" id="L95">        Hitbox aimed = target.get();</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        if (aimed == null) {</span>
+<span class="fc" id="L97">            return;</span>
+        }
+<span class="fc" id="L99">        double centered = aimed.getY() + aimed.getHeight() / 2 - HEIGHT / 2;</span>
+<span class="fc" id="L100">        double lowest = App.HEIGHT - Decor.FLOOR_HEIGHT - HEIGHT;</span>
+<span class="fc" id="L101">        y = Math.max(0, Math.min(lowest, centered));</span>
+<span class="fc" id="L102">    }</span>
+
+    @Override
+    public boolean collidesWith(Hitbox other) {
+<span class="pc bpc" id="L106" title="1 of 4 branches missed.">        return phase == Phase.FLYING &amp;&amp; super.collidesWith(other);</span>
+    }
+
+    @Override
+    public void onCollision(Player player) {
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (phase == Phase.FLYING) {</span>
+<span class="fc" id="L112">            super.onCollision(player);</span>
+        }
+<span class="fc" id="L114">    }</span>
+
+    @Override
+    public void reset(double x, double y) {
+<span class="fc" id="L118">        super.reset(x, y);</span>
+<span class="fc" id="L119">        phase = Phase.WARNING;</span>
+<span class="fc" id="L120">        timer = 0;</span>
+<span class="fc" id="L121">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (phase == Phase.WARNING) {</span>
+<span class="nc" id="L126">            renderAlert(gc);</span>
+<span class="nc" id="L127">            return;</span>
+        }
+<span class="nc" id="L129">        Image body = Sprites.get(BODY);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (body == null) {</span>
+<span class="nc" id="L131">            renderShape(gc);</span>
+<span class="nc" id="L132">            return;</span>
+        }
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (isSpent()) {</span>
+<span class="nc" id="L135">            gc.setGlobalAlpha(0.35);</span>
+        }
+<span class="nc" id="L137">        gc.drawImage(body, x, y - (body.getHeight() - HEIGHT) / 2, body.getWidth(), body.getHeight());</span>
+<span class="nc" id="L138">        gc.setGlobalAlpha(1);</span>
+<span class="nc" id="L139">    }</span>
+
+    private void renderAlert(GraphicsContext gc) {
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        boolean locked = timer &gt;= WARNING_TIME - LOCK_TIME;</span>
+<span class="nc bnc" id="L143" title="All 4 branches missed.">        if (locked &amp;&amp; ((int) (timer * 10)) % 2 == 0) {</span>
+<span class="nc" id="L144">            return;</span>
+        }
+<span class="nc" id="L146">        double centerY = getAlertY();</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        Image icon = Sprites.get(locked ? TARGET : COMING);</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (icon == null) {</span>
+<span class="nc" id="L149">            renderAlertShape(gc, centerY);</span>
+<span class="nc" id="L150">            return;</span>
+        }
+<span class="nc" id="L152">        double centerX = ALERT_X + ALERT_SIZE / 2;</span>
+<span class="nc" id="L153">        gc.drawImage(icon, centerX - ICON_SIZE / 2, centerY - ICON_SIZE / 2, ICON_SIZE, ICON_SIZE);</span>
+<span class="nc" id="L154">    }</span>
+
+    private void renderShape(GraphicsContext gc) {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        gc.setFill(isSpent() ? Color.DARKGRAY : Color.DARKRED);</span>
+<span class="nc" id="L158">        gc.fillRoundRect(x, y, WIDTH, HEIGHT, 12, 12);</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        gc.setFill(isSpent() ? Color.GRAY : Color.LIGHTGRAY);</span>
+<span class="nc" id="L160">        gc.fillRoundRect(x, y, 16, HEIGHT, 12, 12);</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        gc.setFill(isSpent() ? Color.GRAY : Color.ORANGE);</span>
+<span class="nc" id="L162">        gc.fillPolygon(</span>
+            new double[] {x + WIDTH, x + WIDTH + 26, x + WIDTH},
+            new double[] {y + 4, y + HEIGHT / 2, y + HEIGHT - 4},
+            3);
+<span class="nc" id="L166">    }</span>
+
+    private void renderAlertShape(GraphicsContext gc, double centerY) {
+<span class="nc" id="L169">        gc.setFill(Color.RED);</span>
+<span class="nc" id="L170">        gc.fillPolygon(</span>
+            new double[] {ALERT_X, ALERT_X + ALERT_SIZE, ALERT_X + ALERT_SIZE / 2},
+            new double[] {centerY + ALERT_SIZE / 2, centerY + ALERT_SIZE / 2, centerY - ALERT_SIZE / 2},
+            3);
+<span class="nc" id="L174">        gc.setFill(Color.WHITE);</span>
+<span class="nc" id="L175">        gc.fillText(&quot;!&quot;, ALERT_X + ALERT_SIZE / 2 - 3, centerY + 14);</span>
+<span class="nc" id="L176">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

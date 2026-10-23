@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Zapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Zapper.java</span></div><h1>Zapper.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
+
+/** Obstacle électrique statique (ou qui tourne) : six orientations, sprite animé sur 4 images. */
+public class Zapper extends Obstacle {
+
+    /** Orientation et dimensions d'un zapper. */
+<span class="fc" id="L11">    public enum Orientation {</span>
+        /** Barre horizontale. */
+<span class="fc" id="L13">        HORIZONTAL(160, 28),</span>
+        /** Barre verticale. */
+<span class="fc" id="L15">        VERTICAL(28, 160),</span>
+        /** Barre en diagonale. */
+<span class="fc" id="L17">        DIAGONAL(120, 120),</span>
+        /** Longue barre horizontale. */
+<span class="fc" id="L19">        HORIZONTAL_LONG(520, 28),</span>
+        /** Longue barre verticale. */
+<span class="fc" id="L21">        VERTICAL_LONG(28, 240),</span>
+        /** Barre qui tourne sur elle-même. */
+<span class="fc" id="L23">        ROTATING(200, 200);</span>
+
+        private final double width;
+        private final double height;
+
+<span class="fc" id="L28">        Orientation(double width, double height) {</span>
+<span class="fc" id="L29">            this.width = width;</span>
+<span class="fc" id="L30">            this.height = height;</span>
+<span class="fc" id="L31">        }</span>
+
+        /**
+         * @return la largeur de cette orientation, en pixels
+         */
+        public double width() {
+<span class="fc" id="L37">            return width;</span>
+        }
+
+        /**
+         * @return la hauteur de cette orientation, en pixels
+         */
+        public double height() {
+<span class="fc" id="L44">            return height;</span>
+        }
+    }
+
+    /** Vitesse de rotation des zappers qui tournent, en degrés par seconde. */
+    public static final double SPIN_SPEED = 110;
+
+    private static final double THICKNESS = 28;
+    private static final double CAP_RADIUS = THICKNESS / 2;
+    private static final double BAR_WIDTH = 12;
+    private static final int STEPS = 10;
+
+    private static final String SHEET = &quot;zapper_sprite_sheet.png&quot;;
+    private static final int FRAMES = 4;
+    private static final double FRAME_RATE = 10;
+    private static final double CROP_X = 28;
+    private static final double CROP_WIDTH = 54;
+    private static final double BASE_LENGTH = 160;
+    private static final double TOP_CAP_ROWS = 44;
+    private static final double BOTTOM_CAP_START = 80;
+
+    private final Orientation orientation;
+    private double animationTime;
+    private double spin;
+
+    /**
+     * Crée un zapper.
+     *
+     * @param orientation orientation (et donc taille) du zapper
+     * @param x position horizontale
+     * @param y position verticale
+     * @param speed vitesse de jeu partagée
+     */
+    public Zapper(Orientation orientation, double x, double y, GameSpeed speed) {
+<span class="fc" id="L78">        super(x, y, orientation.width(), orientation.height(), speed);</span>
+<span class="fc" id="L79">        this.orientation = orientation;</span>
+<span class="fc" id="L80">    }</span>
+
+    /**
+     * @return l'orientation du zapper
+     */
+    public Orientation getOrientation() {
+<span class="nc" id="L86">        return orientation;</span>
+    }
+
+    /**
+     * @return l'angle de rotation actuel du zapper
+     */
+    public double getSpin() {
+<span class="fc" id="L93">        return spin;</span>
+    }
+
+    @Override
+    public ObstacleType getType() {
+<span class="fc bfc" id="L98" title="All 6 branches covered.">        return switch (orientation) {</span>
+<span class="fc" id="L99">            case HORIZONTAL -&gt; ObstacleType.ZAPPER_HORIZONTAL;</span>
+<span class="fc" id="L100">            case VERTICAL -&gt; ObstacleType.ZAPPER_VERTICAL;</span>
+<span class="fc" id="L101">            case DIAGONAL -&gt; ObstacleType.ZAPPER_DIAGONAL;</span>
+<span class="fc" id="L102">            case HORIZONTAL_LONG -&gt; ObstacleType.ZAPPER_HORIZONTAL_LONG;</span>
+<span class="fc" id="L103">            case VERTICAL_LONG -&gt; ObstacleType.ZAPPER_VERTICAL_LONG;</span>
+<span class="fc" id="L104">            case ROTATING -&gt; ObstacleType.ZAPPER_ROTATING;</span>
+        };
+    }
+
+    @Override
+    public void update(double dt) {
+<span class="fc" id="L110">        super.update(dt);</span>
+<span class="fc" id="L111">        animationTime += dt;</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">        if (orientation == Orientation.ROTATING) {</span>
+<span class="fc" id="L113">            spin = (spin + SPIN_SPEED * dt) % 360;</span>
+        }
+<span class="fc" id="L115">    }</span>
+
+    @Override
+    public void reset(double x, double y) {
+<span class="fc" id="L119">        super.reset(x, y);</span>
+<span class="fc" id="L120">        spin = 0;</span>
+<span class="fc" id="L121">    }</span>
+
+    @Override
+    public boolean collidesWith(Hitbox other) {
+<span class="fc bfc" id="L125" title="All 4 branches covered.">        if (orientation != Orientation.DIAGONAL &amp;&amp; orientation != Orientation.ROTATING) {</span>
+<span class="fc" id="L126">            return super.collidesWith(other);</span>
+        }
+<span class="fc" id="L128">        double[] line = line();</span>
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        for (int i = 0; i &lt; STEPS; i++) {</span>
+<span class="fc" id="L130">            double t = i / (double) (STEPS - 1);</span>
+<span class="fc" id="L131">            double cx = line[0] + t * (line[2] - line[0]);</span>
+<span class="fc" id="L132">            double cy = line[1] + t * (line[3] - line[1]);</span>
+<span class="fc" id="L133">            Hitbox step = new Hitbox(cx - CAP_RADIUS, cy - CAP_RADIUS, THICKNESS, THICKNESS);</span>
+<span class="fc bfc" id="L134" title="All 2 branches covered.">            if (step.intersects(other)) {</span>
+<span class="fc" id="L135">                return true;</span>
+            }
+        }
+<span class="fc" id="L138">        return false;</span>
+    }
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc" id="L143">        Image sheet = Sprites.get(SHEET);</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">        if (sheet == null) {</span>
+<span class="nc" id="L145">            renderShape(gc);</span>
+<span class="nc" id="L146">            return;</span>
+        }
+<span class="nc" id="L148">        double frameWidth = Math.floor(sheet.getWidth() / FRAMES);</span>
+<span class="nc" id="L149">        int frame = (int) (animationTime * FRAME_RATE) % FRAMES;</span>
+<span class="nc" id="L150">        double sourceX = frame * frameWidth + CROP_X;</span>
+<span class="nc" id="L151">        double sourceHeight = sheet.getHeight();</span>
+<span class="nc" id="L152">        double scale = BASE_LENGTH / sourceHeight;</span>
+<span class="nc" id="L153">        double drawWidth = CROP_WIDTH * scale;</span>
+<span class="nc" id="L154">        double length = length();</span>
+<span class="nc" id="L155">        double topHeight = TOP_CAP_ROWS * scale;</span>
+<span class="nc" id="L156">        double bottomHeight = (sourceHeight - BOTTOM_CAP_START) * scale;</span>
+<span class="nc" id="L157">        double middleHeight = Math.max(0, length - topHeight - bottomHeight);</span>
+<span class="nc" id="L158">        double left = -drawWidth / 2;</span>
+<span class="nc" id="L159">        double top = -length / 2;</span>
+
+<span class="nc" id="L161">        gc.save();</span>
+<span class="nc" id="L162">        gc.translate(x + width / 2, y + height / 2);</span>
+<span class="nc" id="L163">        gc.rotate(angle());</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        if (isSpent()) {</span>
+<span class="nc" id="L165">            gc.setGlobalAlpha(0.35);</span>
+        }
+<span class="nc" id="L167">        gc.drawImage(sheet, sourceX, 0, CROP_WIDTH, TOP_CAP_ROWS,</span>
+            left, top, drawWidth, topHeight);
+<span class="nc" id="L169">        gc.drawImage(sheet, sourceX, TOP_CAP_ROWS, CROP_WIDTH, BOTTOM_CAP_START - TOP_CAP_ROWS,</span>
+            left, top + topHeight, drawWidth, middleHeight);
+<span class="nc" id="L171">        gc.drawImage(sheet, sourceX, BOTTOM_CAP_START, CROP_WIDTH, sourceHeight - BOTTOM_CAP_START,</span>
+            left, top + topHeight + middleHeight, drawWidth, bottomHeight);
+<span class="nc" id="L173">        gc.restore();</span>
+<span class="nc" id="L174">    }</span>
+
+    private double length() {
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        return orientation == Orientation.DIAGONAL ? BASE_LENGTH : Math.max(width, height);</span>
+    }
+
+    private double angle() {
+<span class="nc bnc" id="L181" title="All 4 branches missed.">        return switch (orientation) {</span>
+<span class="nc" id="L182">            case HORIZONTAL, HORIZONTAL_LONG -&gt; 90;</span>
+<span class="nc" id="L183">            case VERTICAL, VERTICAL_LONG -&gt; 0;</span>
+<span class="nc" id="L184">            case DIAGONAL -&gt; -45;</span>
+<span class="nc" id="L185">            case ROTATING -&gt; spin - 90;</span>
+        };
+    }
+
+    private void renderShape(GraphicsContext gc) {
+<span class="nc" id="L190">        double[] line = line();</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        gc.setStroke(isSpent() ? Color.GRAY : Color.GOLD);</span>
+<span class="nc" id="L192">        gc.setLineWidth(BAR_WIDTH);</span>
+<span class="nc" id="L193">        gc.strokeLine(line[0], line[1], line[2], line[3]);</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        gc.setFill(isSpent() ? Color.DARKGRAY : Color.ORANGERED);</span>
+<span class="nc" id="L195">        gc.fillOval(line[0] - CAP_RADIUS, line[1] - CAP_RADIUS, THICKNESS, THICKNESS);</span>
+<span class="nc" id="L196">        gc.fillOval(line[2] - CAP_RADIUS, line[3] - CAP_RADIUS, THICKNESS, THICKNESS);</span>
+<span class="nc" id="L197">    }</span>
+
+    private double[] line() {
+<span class="fc" id="L200">        double r = CAP_RADIUS;</span>
+<span class="pc bpc" id="L201" title="2 of 4 branches missed.">        return switch (orientation) {</span>
+            case HORIZONTAL, HORIZONTAL_LONG -&gt;
+<span class="nc" id="L203">                new double[] {x + r, y + height / 2, x + width - r, y + height / 2};</span>
+            case VERTICAL, VERTICAL_LONG -&gt;
+<span class="nc" id="L205">                new double[] {x + width / 2, y + r, x + width / 2, y + height - r};</span>
+            case DIAGONAL -&gt;
+<span class="fc" id="L207">                new double[] {x + r, y + r, x + width - r, y + height - r};</span>
+            case ROTATING -&gt; {
+<span class="fc" id="L209">                double reach = width / 2 - r;</span>
+<span class="fc" id="L210">                double dx = Math.cos(Math.toRadians(spin)) * reach;</span>
+<span class="fc" id="L211">                double dy = Math.sin(Math.toRadians(spin)) * reach;</span>
+<span class="fc" id="L212">                double cx = x + width / 2;</span>
+<span class="fc" id="L213">                double cy = y + height / 2;</span>
+<span class="fc" id="L214">                yield new double[] {cx - dx, cy - dy, cx + dx, cy + dy};</span>
+            }
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

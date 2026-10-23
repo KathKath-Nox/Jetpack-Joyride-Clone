@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomizeState.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">CustomizeState.java</span></div><h1>CustomizeState.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.input.KeyCode;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
+
+/**
+ * ÉCRAN « CUSTOMISER » : le joueur choisit le skin de son personnage.
+ *
+ * &lt;p&gt;Le personnage est affiché en grand au centre, immobile. Flèches gauche/droite (ou haut/bas)
+ * pour changer de skin, Entrée, Espace ou Échap pour revenir au menu. Le choix est gardé par
+ * {@link Game} dans {@link CharacterChoice} et appliqué à la partie suivante.
+ */
+public class CustomizeState implements GameState {
+
+    private static final double PANEL_WIDTH = 760;
+    private static final double PANEL_HEIGHT = 500;
+    private static final double PANEL_Y = 110;
+    private static final double SPRITE_SCALE = 3;
+    private static final double SPRITE_BOTTOM = PANEL_Y + 400;
+    private static final double ARROW_OFFSET = 230;
+    private static final double ARROW_SIZE = 26;
+
+<span class="fc" id="L30">    private static final Color PANEL = Color.rgb(0, 0, 0, 0.85);</span>
+<span class="fc" id="L31">    private static final Color GOLD = Color.GOLD;</span>
+<span class="fc" id="L32">    private static final Color TEXT = Color.LIGHTGRAY;</span>
+
+    private final Game game;
+    private final KeyboardInput input;
+    private final CharacterChoice choice;
+<span class="fc" id="L37">    private final PlayerSprite sprite = new PlayerSprite();</span>
+<span class="fc" id="L38">    private final PlayerState pose = new Falling();</span>
+
+    private Image background;
+    private Font font;
+    private Font smallFont;
+
+    /**
+     * Crée l'écran de choix du personnage.
+     *
+     * @param game  le jeu, qui garde le skin choisi et permet de revenir au menu
+     * @param input le clavier
+     */
+<span class="fc" id="L50">    public CustomizeState(Game game, KeyboardInput input) {</span>
+<span class="fc" id="L51">        this.game = game;</span>
+<span class="fc" id="L52">        this.input = input;</span>
+<span class="fc" id="L53">        this.choice = game.getCharacterChoice();</span>
+<span class="fc" id="L54">    }</span>
+
+    private void loadAssets() {
+<span class="nc" id="L57">        try (InputStream image = Assets.open(&quot;title-bg.png&quot;)) {</span>
+<span class="nc" id="L58">            background = new Image(image, App.WIDTH, App.HEIGHT, false, true);</span>
+<span class="nc" id="L59">        } catch (IOException e) {</span>
+<span class="nc" id="L60">            throw new UncheckedIOException(e);</span>
+<span class="nc" id="L61">        }</span>
+<span class="nc" id="L62">        font = Assets.font(32);</span>
+<span class="nc" id="L63">        smallFont = Assets.font(24);</span>
+<span class="nc" id="L64">    }</span>
+
+    @Override
+    public void update(double dt) {
+<span class="pc bpc" id="L68" title="1 of 4 branches missed.">        if (input.wasPressed(KeyCode.LEFT) || input.wasPressed(KeyCode.UP)) {</span>
+<span class="fc" id="L69">            choice.previous();</span>
+        }
+<span class="pc bpc" id="L71" title="1 of 4 branches missed.">        if (input.wasPressed(KeyCode.RIGHT) || input.wasPressed(KeyCode.DOWN)) {</span>
+<span class="fc" id="L72">            choice.next();</span>
+        }
+<span class="pc bpc" id="L74" title="1 of 4 branches missed.">        if (input.wasPressed(KeyCode.ESCAPE) || input.wasPressed(KeyCode.ENTER)</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">                || input.wasPressed(KeyCode.SPACE)) {</span>
+<span class="fc" id="L76">            game.backToMenu();</span>
+        }
+<span class="fc" id="L78">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (background == null) {</span>
+<span class="nc" id="L83">            loadAssets();</span>
+        }
+<span class="nc" id="L85">        gc.save();</span>
+<span class="nc" id="L86">        gc.drawImage(background, 0, 0);</span>
+
+<span class="nc" id="L88">        double centerX = App.WIDTH / 2.0;</span>
+<span class="nc" id="L89">        gc.setFill(PANEL);</span>
+<span class="nc" id="L90">        gc.fillRoundRect(centerX - PANEL_WIDTH / 2, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT, 28, 28);</span>
+
+<span class="nc" id="L92">        gc.setFont(font);</span>
+<span class="nc" id="L93">        gc.setTextAlign(TextAlignment.CENTER);</span>
+<span class="nc" id="L94">        gc.setFill(GOLD);</span>
+<span class="nc" id="L95">        gc.fillText(&quot;CUSTOMISER&quot;, centerX, PANEL_Y + 55);</span>
+
+<span class="nc" id="L97">        drawCharacter(gc, centerX);</span>
+<span class="nc" id="L98">        drawArrows(gc, centerX, SPRITE_BOTTOM - 130);</span>
+
+<span class="nc" id="L100">        gc.setFill(GOLD);</span>
+<span class="nc" id="L101">        gc.fillText(choice.getName(), centerX, PANEL_Y + 460);</span>
+
+<span class="nc" id="L103">        gc.setFont(smallFont);</span>
+<span class="nc" id="L104">        gc.setFill(TEXT);</span>
+<span class="nc" id="L105">        gc.fillText(&quot;FLECHES POUR CHANGER   ENTREE OU ECHAP POUR REVENIR&quot;, centerX, App.HEIGHT - 30);</span>
+<span class="nc" id="L106">        gc.restore();</span>
+<span class="nc" id="L107">    }</span>
+
+    private void drawCharacter(GraphicsContext gc, double centerX) {
+<span class="nc" id="L110">        gc.save();</span>
+<span class="nc" id="L111">        gc.setImageSmoothing(false);</span>
+<span class="nc" id="L112">        gc.translate(centerX, SPRITE_BOTTOM);</span>
+<span class="nc" id="L113">        gc.scale(SPRITE_SCALE, SPRITE_SCALE);</span>
+<span class="nc" id="L114">        sprite.render(gc, choice.getSheetPath(), pose, 0, new Hitbox(-20, -48, 40, 40));</span>
+<span class="nc" id="L115">        gc.restore();</span>
+<span class="nc" id="L116">    }</span>
+
+    private void drawArrows(GraphicsContext gc, double centerX, double y) {
+<span class="nc" id="L119">        gc.setFill(GOLD);</span>
+<span class="nc" id="L120">        double left = centerX - ARROW_OFFSET;</span>
+<span class="nc" id="L121">        double right = centerX + ARROW_OFFSET;</span>
+<span class="nc" id="L122">        gc.fillPolygon(new double[] {left, left + ARROW_SIZE, left + ARROW_SIZE},</span>
+                new double[] {y, y - ARROW_SIZE, y + ARROW_SIZE}, 3);
+<span class="nc" id="L124">        gc.fillPolygon(new double[] {right, right - ARROW_SIZE, right - ARROW_SIZE},</span>
+                new double[] {y, y - ARROW_SIZE, y + ARROW_SIZE}, 3);
+<span class="nc" id="L126">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

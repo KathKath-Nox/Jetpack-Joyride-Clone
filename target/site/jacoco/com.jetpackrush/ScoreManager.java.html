@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ScoreManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">ScoreManager.java</span></div><h1>ScoreManager.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Compte la distance parcourue et les pièces ramassées, et prévient ses {@link ScoreListener}
+ * (Observer) quand l'une des deux valeurs change.
+ */
+<span class="fc" id="L10">public class ScoreManager {</span>
+
+    /** Nombre de pixels de défilement pour un mètre affiché. */
+    static final double PIXELS_PER_METER = 40;
+
+<span class="fc" id="L15">    private final List&lt;ScoreListener&gt; listeners = new ArrayList&lt;&gt;();</span>
+    private double distancePixels;
+    private int coins;
+
+    /**
+     * Abonne un observateur, qui reçoit tout de suite l'état courant.
+     *
+     * @param listener l'observateur à prévenir
+     */
+    public void addListener(ScoreListener listener) {
+<span class="fc" id="L25">        listeners.add(listener);</span>
+<span class="fc" id="L26">        listener.onScoreChanged(getDistance(), coins);</span>
+<span class="fc" id="L27">    }</span>
+
+    /**
+     * Désabonne un observateur.
+     *
+     * @param listener l'observateur à retirer
+     */
+    public void removeListener(ScoreListener listener) {
+<span class="fc" id="L35">        listeners.remove(listener);</span>
+<span class="fc" id="L36">    }</span>
+
+    /**
+     * Ajoute de la distance parcourue ; les observateurs ne sont prévenus que si le nombre
+     * de mètres entiers change.
+     *
+     * @param pixels distance de défilement à ajouter, en pixels (positive)
+     */
+    public void addDistance(double pixels) {
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        if (pixels &lt;= 0) {</span>
+<span class="nc" id="L46">            return;</span>
+        }
+<span class="fc" id="L48">        int before = getDistance();</span>
+<span class="fc" id="L49">        distancePixels += pixels;</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (getDistance() != before) {</span>
+<span class="fc" id="L51">            notifyListeners();</span>
+        }
+<span class="fc" id="L53">    }</span>
+
+    /** Ajoute une pièce ramassée. */
+    public void addCoin() {
+<span class="fc" id="L57">        coins++;</span>
+<span class="fc" id="L58">        notifyListeners();</span>
+<span class="fc" id="L59">    }</span>
+
+    /**
+     * Donne la distance parcourue.
+     *
+     * @return la distance en mètres entiers
+     */
+    public int getDistance() {
+<span class="fc" id="L67">        return (int) (distancePixels / PIXELS_PER_METER);</span>
+    }
+
+    /**
+     * Donne le nombre de pièces ramassées.
+     *
+     * @return le nombre de pièces
+     */
+    public int getCoins() {
+<span class="fc" id="L76">        return coins;</span>
+    }
+
+    private void notifyListeners() {
+<span class="fc" id="L80">        int distance = getDistance();</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        for (ScoreListener listener : List.copyOf(listeners)) {</span>
+<span class="fc" id="L82">            listener.onScoreChanged(distance, coins);</span>
+<span class="fc" id="L83">        }</span>
+<span class="fc" id="L84">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

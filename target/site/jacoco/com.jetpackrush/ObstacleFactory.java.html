@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ObstacleFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">ObstacleFactory.java</span></div><h1>ObstacleFactory.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.function.Supplier;
+
+/** Fabrique (pattern Factory) qui construit l'obstacle correspondant à un {@link ObstacleType}. */
+public class ObstacleFactory {
+    private final GameSpeed speed;
+    private final Supplier&lt;Hitbox&gt; target;
+
+    /**
+     * Crée une factory sans cible : les missiles ne suivent pas le joueur.
+     *
+     * @param speed vitesse de jeu partagée
+     */
+    public ObstacleFactory(GameSpeed speed) {
+<span class="fc" id="L16">        this(speed, () -&gt; null);</span>
+<span class="fc" id="L17">    }</span>
+
+    /**
+     * Crée une factory avec une cible pour les missiles.
+     *
+     * @param speed vitesse de jeu partagée
+     * @param target fournit la hitbox du joueur, que les missiles visent
+     */
+<span class="fc" id="L25">    public ObstacleFactory(GameSpeed speed, Supplier&lt;Hitbox&gt; target) {</span>
+<span class="fc" id="L26">        this.speed = speed;</span>
+<span class="fc" id="L27">        this.target = target;</span>
+<span class="fc" id="L28">    }</span>
+
+    /**
+     * Construit un obstacle du type demandé.
+     *
+     * @param type type d'obstacle à créer
+     * @param x position horizontale
+     * @param y position verticale
+     * @return le nouvel obstacle
+     */
+    public Obstacle create(ObstacleType type, double x, double y) {
+<span class="fc bfc" id="L39" title="All 9 branches covered.">        return switch (type) {</span>
+<span class="fc" id="L40">            case ZAPPER_HORIZONTAL -&gt; new Zapper(Zapper.Orientation.HORIZONTAL, x, y, speed);</span>
+<span class="fc" id="L41">            case ZAPPER_VERTICAL -&gt; new Zapper(Zapper.Orientation.VERTICAL, x, y, speed);</span>
+<span class="fc" id="L42">            case ZAPPER_DIAGONAL -&gt; new Zapper(Zapper.Orientation.DIAGONAL, x, y, speed);</span>
+<span class="fc" id="L43">            case ZAPPER_HORIZONTAL_LONG -&gt; new Zapper(Zapper.Orientation.HORIZONTAL_LONG, x, y, speed);</span>
+<span class="fc" id="L44">            case ZAPPER_VERTICAL_LONG -&gt; new Zapper(Zapper.Orientation.VERTICAL_LONG, x, y, speed);</span>
+<span class="fc" id="L45">            case ZAPPER_ROTATING -&gt; new Zapper(Zapper.Orientation.ROTATING, x, y, speed);</span>
+<span class="fc" id="L46">            case MISSILE -&gt; new Missile(x, y, speed, target);</span>
+<span class="fc" id="L47">            case LASER -&gt; new Laser(y, speed);</span>
+<span class="fc" id="L48">            case DUMMY -&gt; new DummyObstacle(x, y, DummyObstacle.DEFAULT_SIZE, DummyObstacle.DEFAULT_SIZE, speed);</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

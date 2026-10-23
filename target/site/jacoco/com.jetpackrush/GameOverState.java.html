@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GameOverState.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">GameOverState.java</span></div><h1>GameOverState.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.geometry.VPos;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.KeyCode;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
+
+/**
+ * FIN DE PARTIE : écran affiché par-dessus la partie figée quand le joueur meurt.
+ *
+ * &lt;p&gt;« Rejouer » relance une nouvelle partie. « Quitter » (ou Échap) revient au menu principal.
+ */
+public class GameOverState implements GameState {
+
+    // Options de fin de partie, dans l'ordre d'affichage (de haut en bas)
+    static final int RETRY = 0;
+    static final int QUIT = 1;
+<span class="fc" id="L20">    private static final String[] OPTIONS = {&quot;REJOUER&quot;, &quot;QUITTER&quot;};</span>
+
+    private static final double TITLE_Y = 250;
+    private static final double SCORE_Y = 315;
+    private static final double BEST_Y = 358;
+    private static final double OPTIONS_Y = 420;
+    private static final double OPTION_SPACING = 70;
+
+<span class="fc" id="L28">    private static final Color VEIL = Color.rgb(0, 0, 0, 0.6);</span>
+<span class="fc" id="L29">    private static final Color TITLE = Color.TOMATO;</span>
+<span class="fc" id="L30">    private static final Color SELECTED = Color.GOLD;</span>
+<span class="fc" id="L31">    private static final Color NOT_SELECTED = Color.LIGHTGRAY;</span>
+
+    private final Game game;
+    private final KeyboardInput input;
+    private final PlayState play;
+<span class="fc" id="L36">    private int selected = RETRY;</span>
+
+    // Chargées au premier affichage, comme dans MenuState, pour que les tests tournent sans fenêtre
+    private Font titleFont;
+    private Font optionFont;
+
+    /**
+     * Crée l'écran de fin de partie.
+     *
+     * @param game  le jeu, pour relancer une partie ou revenir au menu
+     * @param input le clavier
+     * @param play  la partie terminée, affichée figée en fond
+     */
+<span class="fc" id="L49">    public GameOverState(Game game, KeyboardInput input, PlayState play) {</span>
+<span class="fc" id="L50">        this.game = game;</span>
+<span class="fc" id="L51">        this.input = input;</span>
+<span class="fc" id="L52">        this.play = play;</span>
+<span class="fc" id="L53">    }</span>
+
+    private void loadFonts() {
+<span class="nc" id="L56">        titleFont = Assets.font(72);</span>
+<span class="nc" id="L57">        optionFont = Assets.font(32);</span>
+<span class="nc" id="L58">    }</span>
+
+    @Override
+    public void update(double dt) {
+<span class="pc bpc" id="L62" title="1 of 4 branches missed.">        if (input.wasPressed(KeyCode.UP) || input.wasPressed(KeyCode.LEFT)) {</span>
+<span class="fc" id="L63">            selected = (selected + OPTIONS.length - 1) % OPTIONS.length;</span>
+        }
+<span class="pc bpc" id="L65" title="1 of 4 branches missed.">        if (input.wasPressed(KeyCode.DOWN) || input.wasPressed(KeyCode.RIGHT)) {</span>
+<span class="fc" id="L66">            selected = (selected + 1) % OPTIONS.length;</span>
+        }
+        // Échap : même effet que « Quitter »
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        if (input.wasPressed(KeyCode.ESCAPE)) {</span>
+<span class="fc" id="L70">            game.backToMenu();</span>
+<span class="fc bfc" id="L71" title="All 4 branches covered.">        } else if (input.wasPressed(KeyCode.SPACE) || input.wasPressed(KeyCode.ENTER)) {</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">            if (selected == RETRY) {</span>
+<span class="fc" id="L73">                game.startNewGame();</span>
+            } else {
+<span class="fc" id="L75">                game.backToMenu();</span>
+            }
+        }
+<span class="fc" id="L78">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (titleFont == null) {</span>
+<span class="nc" id="L83">            loadFonts();</span>
+        }
+        // La partie reste affichée en fond, figée à l'instant de la mort
+<span class="nc" id="L86">        play.render(gc);</span>
+
+<span class="nc" id="L88">        gc.save();</span>
+<span class="nc" id="L89">        gc.setFill(VEIL);</span>
+<span class="nc" id="L90">        gc.fillRect(0, 0, App.WIDTH, App.HEIGHT);</span>
+<span class="nc" id="L91">        gc.setTextAlign(TextAlignment.CENTER);</span>
+<span class="nc" id="L92">        gc.setTextBaseline(VPos.CENTER);</span>
+
+<span class="nc" id="L94">        double centerX = App.WIDTH / 2.0;</span>
+<span class="nc" id="L95">        gc.setFont(titleFont);</span>
+<span class="nc" id="L96">        gc.setFill(TITLE);</span>
+<span class="nc" id="L97">        gc.fillText(&quot;GAME OVER&quot;, centerX, TITLE_Y);</span>
+
+<span class="nc" id="L99">        gc.setFont(optionFont);</span>
+<span class="nc" id="L100">        gc.setFill(Color.WHITE);</span>
+<span class="nc" id="L101">        gc.fillText(play.getScore().getDistance() + &quot; M   -   &quot; + play.getScore().getCoins() + &quot; PIECES&quot;,</span>
+            centerX, SCORE_Y);
+
+<span class="nc" id="L104">        BestScore best = game.getBestScore();</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        if (best.isNewRecord()) {</span>
+<span class="nc" id="L106">            gc.setFill(SELECTED);</span>
+<span class="nc" id="L107">            gc.fillText(&quot;NOUVEAU RECORD !&quot;, centerX, BEST_Y);</span>
+        } else {
+<span class="nc" id="L109">            gc.setFill(NOT_SELECTED);</span>
+<span class="nc" id="L110">            gc.fillText(&quot;MEILLEUR : &quot; + best.get() + &quot; M&quot;, centerX, BEST_Y);</span>
+        }
+
+        // Options de fin de partie, celle sélectionnée en doré
+<span class="nc" id="L114">        gc.setFont(optionFont);</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        for (int i = 0; i &lt; OPTIONS.length; i++) {</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">            gc.setFill(i == selected ? SELECTED : NOT_SELECTED);</span>
+<span class="nc" id="L117">            gc.fillText(OPTIONS[i], centerX, OPTIONS_Y + i * OPTION_SPACING);</span>
+        }
+<span class="nc" id="L119">        gc.restore();</span>
+<span class="nc" id="L120">    }</span>
+
+    int getSelected() {
+<span class="fc" id="L123">        return selected;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

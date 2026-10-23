@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Item.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Item.java</span></div><h1>Item.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+/**
+ * Objet ramassable. C'est une {@link Entity} qui défile vers la gauche à la vitesse du jeu et qui
+ * réagit au contact du joueur ({@link Collidable}).
+ */
+public abstract class Item extends Entity implements Collidable {
+    private final GameSpeed speed;
+    private boolean collected;
+
+    /**
+     * Crée un item.
+     *
+     * @param x      position horizontale du coin supérieur gauche
+     * @param y      position verticale du coin supérieur gauche
+     * @param width  largeur en pixels
+     * @param height hauteur en pixels
+     * @param speed  vitesse de défilement du jeu
+     */
+    protected Item(double x, double y, double width, double height, GameSpeed speed) {
+<span class="fc" id="L21">        super(x, y, width, height);</span>
+<span class="fc" id="L22">        this.speed = speed;</span>
+<span class="fc" id="L23">    }</span>
+
+    /**
+     * Fait défiler l'item vers la gauche à la vitesse du jeu.
+     *
+     * @param dt temps écoulé depuis la dernière image, en secondes
+     */
+    @Override
+    public void update(double dt) {
+<span class="fc" id="L32">        x -= speed.getSpeed() * dt;</span>
+<span class="fc" id="L33">    }</span>
+
+    /**
+     * Marque l'item comme ramassé. Une fois ramassé, il ne peut plus l'être.
+     */
+    protected void collect() {
+<span class="fc" id="L39">        collected = true;</span>
+<span class="fc" id="L40">    }</span>
+
+    /**
+     * Indique si l'item a déjà été ramassé.
+     *
+     * @return {@code true} s'il est ramassé
+     */
+    public boolean isCollected() {
+<span class="fc" id="L48">        return collected;</span>
+    }
+
+    /**
+     * Indique si l'item est entièrement sorti de l'écran par la gauche.
+     *
+     * @return {@code true} s'il est hors écran
+     */
+    public boolean isOffScreen() {
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        return x + width &lt; 0;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

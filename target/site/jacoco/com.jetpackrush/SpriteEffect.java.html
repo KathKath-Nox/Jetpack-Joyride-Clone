@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SpriteEffect.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">SpriteEffect.java</span></div><h1>SpriteEffect.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+
+/**
+ * Effet visuel animé joué une seule fois, à partir d'une image en bande verticale de 6 cases de
+ * 64 par 64 pixels (explosion, fumée). Il se déplace à une vitesse donnée et disparaît à la fin de
+ * l'animation.
+ */
+public class SpriteEffect {
+    /** Nombre d'images de l'animation. */
+    public static final int FRAMES = 6;
+    private static final int FRAME_SIZE = 64;
+<span class="fc" id="L18">    private static final Map&lt;String, Image&gt; CACHE = new HashMap&lt;&gt;();</span>
+
+    private final String path;
+    private final double vx;
+    private final double vy;
+    private final double size;
+    private final double fps;
+    private double x;
+    private double y;
+    private double age;
+
+    /**
+     * Crée un effet animé.
+     *
+     * @param path chemin de l'image dans les ressources
+     * @param x    position horizontale du centre
+     * @param y    position verticale du centre
+     * @param vx   vitesse horizontale, en pixels par seconde
+     * @param vy   vitesse verticale, en pixels par seconde
+     * @param size taille d'affichage, en pixels
+     * @param fps  nombre d'images de l'animation par seconde
+     */
+<span class="fc" id="L40">    public SpriteEffect(String path, double x, double y, double vx, double vy, double size, double fps) {</span>
+<span class="fc" id="L41">        this.path = path;</span>
+<span class="fc" id="L42">        this.x = x;</span>
+<span class="fc" id="L43">        this.y = y;</span>
+<span class="fc" id="L44">        this.vx = vx;</span>
+<span class="fc" id="L45">        this.vy = vy;</span>
+<span class="fc" id="L46">        this.size = size;</span>
+<span class="fc" id="L47">        this.fps = fps;</span>
+<span class="fc" id="L48">    }</span>
+
+    /**
+     * Fait avancer l'animation et déplace l'effet.
+     *
+     * @param dt temps écoulé depuis la dernière image, en secondes
+     */
+    public void update(double dt) {
+<span class="fc" id="L56">        age += dt;</span>
+<span class="fc" id="L57">        x += vx * dt;</span>
+<span class="fc" id="L58">        y += vy * dt;</span>
+<span class="fc" id="L59">    }</span>
+
+    /**
+     * Donne l'image courante de l'animation.
+     *
+     * @return l'indice de l'image, entre 0 et {@link #FRAMES} moins 1
+     */
+    public int getFrame() {
+<span class="nc" id="L67">        return Math.min(FRAMES - 1, (int) (age * fps));</span>
+    }
+
+    /**
+     * Indique si l'animation n'est pas terminée.
+     *
+     * @return {@code true} tant que l'effet doit être affiché
+     */
+    public boolean isAlive() {
+<span class="fc bfc" id="L76" title="All 2 branches covered.">        return age * fps &lt; FRAMES;</span>
+    }
+
+    /**
+     * Dessine l'image courante de l'effet. Ne dessine rien si l'image est introuvable.
+     *
+     * @param gc contexte graphique du canvas
+     */
+    public void render(GraphicsContext gc) {
+<span class="nc" id="L85">        Image image = load(path);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (image == null) {</span>
+<span class="nc" id="L87">            return;</span>
+        }
+<span class="nc" id="L89">        gc.save();</span>
+<span class="nc" id="L90">        gc.setImageSmoothing(false);</span>
+<span class="nc" id="L91">        gc.drawImage(image, 0, getFrame() * FRAME_SIZE, FRAME_SIZE, FRAME_SIZE,</span>
+                x - size / 2, y - size / 2, size, size);
+<span class="nc" id="L93">        gc.restore();</span>
+<span class="nc" id="L94">    }</span>
+
+    private static Image load(String path) {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (CACHE.containsKey(path)) {</span>
+<span class="nc" id="L98">            return CACHE.get(path);</span>
+        }
+<span class="nc" id="L100">        InputStream in = SpriteEffect.class.getResourceAsStream(path);</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        Image image = in == null ? null : new Image(in);</span>
+<span class="nc" id="L102">        CACHE.put(path, image);</span>
+<span class="nc" id="L103">        return image;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

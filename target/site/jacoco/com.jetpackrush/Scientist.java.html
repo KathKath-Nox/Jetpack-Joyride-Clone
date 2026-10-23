@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Scientist.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Scientist.java</span></div><h1>Scientist.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
+
+/** Scientifique du laboratoire : il marche, a peur du joueur, est projeté en cas de choc puis s'évanouit (états WALKING, SCARED, LAUNCHED, FAINTED). */
+public class Scientist extends Entity {
+
+    /** Largeur du scientifique, en pixels. */
+    public static final double WIDTH = 36;
+    /** Hauteur du scientifique, en pixels. */
+    public static final double HEIGHT = 62;
+
+    private static final double SCALE = 1.1;
+    private static final double STEP_TIME = 0.18;
+    private static final double FLAME_LENGTH = 120;
+    private static final double FLAME_INSET = 8;
+    private static final double SCARE_RANGE = 260;
+    private static final double KNOCK_SPEED_X = 140;
+    private static final double KNOCK_SPEED_Y = -480;
+    private static final double GRAVITY = 1600;
+    private static final double SPIN_SPEED = 720;
+
+    private static final String STANDING = &quot;scientist_stationary.png&quot;;
+    private static final String MOVING = &quot;scientist_moving.png&quot;;
+    private static final String CROUCHING = &quot;scientist_crouching.png&quot;;
+    private static final String TUMBLING = &quot;scientist_fainting_upsidedown.png&quot;;
+    private static final String FAINTED = &quot;scientist_fainting.png&quot;;
+
+<span class="fc" id="L31">    private enum State {</span>
+<span class="fc" id="L32">        WALKING,</span>
+<span class="fc" id="L33">        SCARED,</span>
+<span class="fc" id="L34">        LAUNCHED,</span>
+<span class="fc" id="L35">        FAINTED</span>
+    }
+
+    private final GameSpeed speed;
+    private final double walkSpeed;
+    private final double depth;
+<span class="fc" id="L41">    private State state = State.WALKING;</span>
+    private double stateTime;
+    private double vx;
+    private double vy;
+    private double spin;
+
+    /**
+     * Crée un scientifique.
+     *
+     * @param x position horizontale de départ
+     * @param walkSpeed vitesse de marche (le signe donne la direction)
+     * @param depth profondeur d'affichage
+     * @param speed vitesse de jeu partagée
+     */
+    public Scientist(double x, double walkSpeed, double depth, GameSpeed speed) {
+<span class="fc" id="L56">        super(x, App.HEIGHT - Decor.FLOOR_HEIGHT + depth - HEIGHT, WIDTH, HEIGHT);</span>
+<span class="fc" id="L57">        this.walkSpeed = walkSpeed;</span>
+<span class="fc" id="L58">        this.depth = depth;</span>
+<span class="fc" id="L59">        this.speed = speed;</span>
+<span class="fc" id="L60">    }</span>
+
+    /**
+     * @return true si le scientifique marche tranquillement
+     */
+    public boolean isWalking() {
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">        return state == State.WALKING;</span>
+    }
+
+    /**
+     * @return true si le scientifique a peur et s'accroupit
+     */
+    public boolean isScared() {
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">        return state == State.SCARED;</span>
+    }
+
+    /**
+     * @return true si le scientifique a été projeté
+     */
+    public boolean isKnocked() {
+<span class="fc bfc" id="L80" title="All 4 branches covered.">        return state == State.LAUNCHED || state == State.FAINTED;</span>
+    }
+
+    /**
+     * @return true si le scientifique est évanoui au sol
+     */
+    public boolean isFainted() {
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        return state == State.FAINTED;</span>
+    }
+
+    /**
+     * @return true si le scientifique est sorti de l'écran
+     */
+    public boolean isOffScreen() {
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        return x + width &lt; 0;</span>
+    }
+
+    /**
+     * Fait réagir le scientifique à la présence du joueur (peur, ou projection en cas de contact).
+     *
+     * @param player hitbox du joueur
+     * @param thrusting true si le jetpack est en train de propulser
+     */
+    public void react(Hitbox player, boolean thrusting) {
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (isKnocked()) {</span>
+<span class="fc" id="L105">            return;</span>
+        }
+<span class="fc" id="L107">        Hitbox body = getHitbox();</span>
+<span class="fc bfc" id="L108" title="All 6 branches covered.">        if (player.intersects(body) || (thrusting &amp;&amp; flame(player).intersects(body))) {</span>
+<span class="fc" id="L109">            knock(player);</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">        } else if (playerIsNearAbove(player)) {</span>
+<span class="fc" id="L111">            enter(State.SCARED);</span>
+        } else {
+<span class="fc" id="L113">            enter(State.WALKING);</span>
+        }
+<span class="fc" id="L115">    }</span>
+
+    @Override
+    public void update(double dt) {
+<span class="fc" id="L119">        stateTime += dt;</span>
+<span class="pc bpc" id="L120" title="1 of 4 branches missed.">        switch (state) {</span>
+<span class="fc" id="L121">            case WALKING -&gt; x += (walkSpeed - speed.getSpeed()) * dt;</span>
+<span class="fc" id="L122">            case SCARED, FAINTED -&gt; x -= speed.getSpeed() * dt;</span>
+<span class="fc" id="L123">            case LAUNCHED -&gt; fly(dt);</span>
+        }
+<span class="fc" id="L125">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc" id="L129">        Image image = Sprites.get(spriteName());</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (image == null) {</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">            gc.setFill(isKnocked() ? Color.GRAY : Color.BEIGE);</span>
+<span class="nc" id="L132">            gc.fillRect(x, y, width, height);</span>
+<span class="nc" id="L133">            return;</span>
+        }
+<span class="nc" id="L135">        double size = image.getWidth() * SCALE;</span>
+<span class="nc" id="L136">        double centerX = x + width / 2;</span>
+<span class="nc" id="L137">        gc.save();</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (state == State.LAUNCHED) {</span>
+<span class="nc" id="L139">            gc.translate(centerX, y + height / 2);</span>
+<span class="nc" id="L140">            gc.rotate(spin);</span>
+<span class="nc" id="L141">            gc.drawImage(image, -size / 2, -size / 2, size, size);</span>
+        } else {
+<span class="nc" id="L143">            gc.translate(centerX, y + height);</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">            if (walkSpeed &gt; 0) {</span>
+<span class="nc" id="L145">                gc.scale(-1, 1);</span>
+            }
+<span class="nc" id="L147">            gc.drawImage(image, -size / 2, -size, size, size);</span>
+        }
+<span class="nc" id="L149">        gc.restore();</span>
+<span class="nc" id="L150">    }</span>
+
+    private String spriteName() {
+<span class="nc bnc" id="L153" title="All 4 branches missed.">        return switch (state) {</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">            case WALKING -&gt; (int) (stateTime / STEP_TIME) % 2 == 0 ? STANDING : MOVING;</span>
+<span class="nc" id="L155">            case SCARED -&gt; CROUCHING;</span>
+<span class="nc" id="L156">            case LAUNCHED -&gt; TUMBLING;</span>
+<span class="nc" id="L157">            case FAINTED -&gt; FAINTED;</span>
+        };
+    }
+
+    private Hitbox flame(Hitbox player) {
+<span class="fc" id="L162">        return new Hitbox(player.getX() + FLAME_INSET, player.getY() + player.getHeight(),</span>
+<span class="fc" id="L163">            player.getWidth() - 2 * FLAME_INSET, FLAME_LENGTH);</span>
+    }
+
+    private boolean playerIsNearAbove(Hitbox player) {
+<span class="fc" id="L167">        double playerCenter = player.getX() + player.getWidth() / 2;</span>
+<span class="fc bfc" id="L168" title="All 2 branches covered.">        boolean above = player.getY() + player.getHeight() &lt;= y;</span>
+<span class="fc bfc" id="L169" title="All 4 branches covered.">        return above &amp;&amp; Math.abs(playerCenter - (x + width / 2)) &lt; SCARE_RANGE;</span>
+    }
+
+    private void knock(Hitbox player) {
+<span class="fc" id="L173">        double playerCenter = player.getX() + player.getWidth() / 2;</span>
+<span class="fc bfc" id="L174" title="All 2 branches covered.">        double direction = x + width / 2 &gt;= playerCenter ? 1 : -1;</span>
+<span class="fc" id="L175">        vx = direction * KNOCK_SPEED_X;</span>
+<span class="fc" id="L176">        vy = KNOCK_SPEED_Y;</span>
+<span class="fc" id="L177">        spin = 0;</span>
+<span class="fc" id="L178">        enter(State.LAUNCHED);</span>
+<span class="fc" id="L179">    }</span>
+
+    private void fly(double dt) {
+<span class="fc" id="L182">        vy += GRAVITY * dt;</span>
+<span class="fc" id="L183">        y += vy * dt;</span>
+<span class="fc" id="L184">        x += (vx - speed.getSpeed()) * dt;</span>
+<span class="fc" id="L185">        spin = (spin + SPIN_SPEED * dt) % 360;</span>
+<span class="fc" id="L186">        double restingY = App.HEIGHT - Decor.FLOOR_HEIGHT + depth - height;</span>
+<span class="fc bfc" id="L187" title="All 4 branches covered.">        if (vy &gt; 0 &amp;&amp; y &gt;= restingY) {</span>
+<span class="fc" id="L188">            y = restingY;</span>
+<span class="fc" id="L189">            vx = 0;</span>
+<span class="fc" id="L190">            vy = 0;</span>
+<span class="fc" id="L191">            spin = 0;</span>
+<span class="fc" id="L192">            enter(State.FAINTED);</span>
+        }
+<span class="fc" id="L194">    }</span>
+
+    private void enter(State next) {
+<span class="fc bfc" id="L197" title="All 2 branches covered.">        if (state != next) {</span>
+<span class="fc" id="L198">            state = next;</span>
+<span class="fc" id="L199">            stateTime = 0;</span>
+        }
+<span class="fc" id="L201">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Hitbox.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Hitbox.java</span></div><h1>Hitbox.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+/**
+ * Rectangle de collision immuable. Toutes les collisions du jeu se font en comparant deux hitbox.
+ */
+public class Hitbox {
+    private final double x;
+    private final double y;
+    private final double width;
+    private final double height;
+
+    /**
+     * Crée une hitbox.
+     *
+     * @param x      position horizontale du coin supérieur gauche
+     * @param y      position verticale du coin supérieur gauche
+     * @param width  largeur en pixels
+     * @param height hauteur en pixels
+     */
+<span class="fc" id="L20">    public Hitbox(double x, double y, double width, double height) {</span>
+<span class="fc" id="L21">        this.x = x;</span>
+<span class="fc" id="L22">        this.y = y;</span>
+<span class="fc" id="L23">        this.width = width;</span>
+<span class="fc" id="L24">        this.height = height;</span>
+<span class="fc" id="L25">    }</span>
+
+    /**
+     * Donne la position horizontale.
+     *
+     * @return la position horizontale en pixels
+     */
+<span class="fc" id="L32">    public double getX() { return x; }</span>
+
+    /**
+     * Donne la position verticale.
+     *
+     * @return la position verticale en pixels
+     */
+<span class="fc" id="L39">    public double getY() { return y; }</span>
+
+    /**
+     * Donne la largeur.
+     *
+     * @return la largeur en pixels
+     */
+<span class="fc" id="L46">    public double getWidth() { return width; }</span>
+
+    /**
+     * Donne la hauteur.
+     *
+     * @return la hauteur en pixels
+     */
+<span class="fc" id="L53">    public double getHeight() { return height; }</span>
+
+    /**
+     * Indique si cette hitbox chevauche une autre. Deux hitbox qui se touchent seulement par un bord
+     * ne se chevauchent pas.
+     *
+     * @param other l'autre hitbox
+     * @return {@code true} si les deux rectangles se chevauchent
+     */
+    public boolean intersects(Hitbox other) {
+<span class="fc bfc" id="L63" title="All 8 branches covered.">        return x &lt; other.x + other.width</span>
+            &amp;&amp; x + width &gt; other.x
+            &amp;&amp; y &lt; other.y + other.height
+            &amp;&amp; y + height &gt; other.y;
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

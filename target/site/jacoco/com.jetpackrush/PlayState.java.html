@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PlayState.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">PlayState.java</span></div><h1>PlayState.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import javafx.scene.canvas.GraphicsContext;
+
+/**
+ * Écran de jeu : une partie en cours (intro, décor, joueur, obstacles, scientifiques et power-ups).
+ * Échap met la partie en pause.
+ *
+ * &lt;p&gt;En mode Rush ({@link RushMode}), le temps de jeu passe plus vite, les décors changent souvent
+ * et pièces et power-ups apparaissent plus souvent : la partie est faite pour la démo.
+ *
+ * &lt;p&gt;Quand le joueur meurt, le décor se fige et le corps retombe pendant
+ * {@link #DEATH_DELAY} secondes, puis la partie passe à l'écran de fin.
+ */
+public class PlayState implements GameState {
+
+    /** Temps laissé au joueur mort pour retomber avant l'écran de fin, en secondes. */
+    static final double DEATH_DELAY = 1.5;
+
+    // Spawner provisoire : sera remplacé par le générateur de niveau (feat/level-generator).
+    static final double WALK_SPEED = 220;
+    static final double BURST_SPEED = 1000;
+    static final double BURST_TIME = 1.4;
+    private static final double PLAYER_FRONT = 240;
+    private static final double START_SPEED = 220;
+    private static final double MAX_SPEED = 520;
+    private static final double SPEED_GAIN = 4;
+    private static final double FIRST_SPAWN = 3.5;
+    private static final double START_DELAY = 3.2;
+    private static final double MIN_DELAY = 1.1;
+    private static final double DELAY_DROP = 0.04;
+    private static final double DIAGONAL_FROM = 10;
+    private static final double MISSILE_FROM = 20;
+    private static final double ROTATING_FROM = 25;
+    private static final double PATTERNS_FROM = 20;
+    private static final double PATTERN_COOLDOWN = 30;
+    private static final double PATTERN_CHANCE = 0.35;
+    private static final int MAX_PATTERNS = 3;
+    private static final double LASER_FROM = 40;
+    private static final double LASER_EARLY_COOLDOWN = 60;
+    private static final double LASER_LATE_COOLDOWN = 90;
+    private static final double LASER_LATE_AFTER = 180;
+    private static final double LASER_LOCKOUT = 15;
+    private static final double DOUBLE_FROM = 70;
+    private static final double DOUBLE_COOLDOWN = 50;
+    private static final double AFTER_DOUBLE_DELAY = 2.5;
+    private static final double DOUBLE_GAP = 220;
+    private static final double CORRIDOR_GAP = 300;
+    private static final double GATE_GAP = 260;
+    private static final double SCIENTIST_FIRST = 1.5;
+    private static final double SCIENTIST_MIN_DELAY = 3;
+    private static final double SCIENTIST_MAX_DELAY = 6;
+    private static final double SPAWN_X = App.WIDTH + 50;
+    private static final double START_Y = App.HEIGHT - Player.GROUND_HEIGHT - 60;
+    private static final double POWERUP_FIRST = 6;
+    private static final double POWERUP_MIN_DELAY = 14;
+    private static final double POWERUP_MAX_DELAY = 24;
+    private static final double COIN_FIRST = 4;
+    private static final double COIN_MIN_DELAY = 3;
+    private static final double COIN_MAX_DELAY = 6;
+    private static final double COIN_SPACING = 46;
+    private static final double COIN_CLEARANCE = 120;
+
+    private final Game game;
+    private final InputSource input;
+<span class="fc" id="L69">    private final GameSpeed speed = new GameSpeed(BURST_SPEED);</span>
+    private final Decor decor;
+    private final boolean rush;
+    private final double delayScale;
+    private final Player player;
+<span class="fc" id="L74">    private final GameEvents events = new GameEvents();</span>
+<span class="fc" id="L75">    private final PowerUpIndicator indicator = new PowerUpIndicator();</span>
+    private final ObstaclePool pool;
+<span class="fc" id="L77">    private final ScoreManager score = new ScoreManager();</span>
+<span class="fc" id="L78">    private final ScoreHud scoreHud = new ScoreHud();</span>
+<span class="fc" id="L79">    private final IntroWall wall = new IntroWall(Decor.ENTRY_X, speed);</span>
+<span class="fc" id="L80">    private boolean intro = true;</span>
+    private double introTime;
+<span class="fc" id="L82">    private final Random random = new Random();</span>
+<span class="fc" id="L83">    private final List&lt;Obstacle&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L84">    private final List&lt;Obstacle&gt; doubleGroup = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L85">    private final List&lt;Scientist&gt; scientists = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L86">    private final List&lt;PowerUp&gt; powerUps = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L87">    private final List&lt;Coin&gt; coins = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L88">    private double spawnTimer = FIRST_SPAWN;</span>
+<span class="fc" id="L89">    private double scientistTimer = SCIENTIST_FIRST;</span>
+<span class="fc" id="L90">    private double powerUpTimer = POWERUP_FIRST;</span>
+<span class="fc" id="L91">    private double coinTimer = COIN_FIRST;</span>
+    private double elapsed;
+    private int patterns;
+<span class="fc" id="L94">    private double nextPatternAt = PATTERNS_FROM;</span>
+<span class="fc" id="L95">    private double nextLaserAt = LASER_FROM;</span>
+<span class="fc" id="L96">    private double lastLaserAt = -LASER_LOCKOUT;</span>
+    private int doublesPerGame;
+    private int doublesDone;
+<span class="fc" id="L99">    private double nextDoubleAt = DOUBLE_FROM;</span>
+    private boolean doubleDue;
+    private double deathTime;
+
+    /**
+     * Prépare une nouvelle partie.
+     *
+     * @param game  le jeu, pour passer en pause ou à l'écran de fin
+     * @param input l'entrée lue par le joueur
+     */
+    public PlayState(Game game, InputSource input) {
+<span class="fc" id="L110">        this(game, input, false);</span>
+<span class="fc" id="L111">    }</span>
+
+    /**
+     * Prépare une nouvelle partie, normale ou en mode Rush.
+     *
+     * @param game  le jeu, pour passer en pause ou à l'écran de fin
+     * @param input l'entrée lue par le joueur
+     * @param rush  {@code true} pour le mode Rush (partie accélérée pour la démo)
+     */
+<span class="fc" id="L120">    public PlayState(Game game, InputSource input, boolean rush) {</span>
+<span class="fc" id="L121">        this.game = game;</span>
+<span class="fc" id="L122">        this.input = input;</span>
+<span class="fc" id="L123">        this.rush = rush;</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        this.delayScale = rush ? RushMode.SPAWN_SCALE : 1;</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">        this.decor = new Decor(speed, rush ? RushMode.ZONE_LENGTH : Decor.ZONE_LENGTH);</span>
+<span class="fc" id="L126">        this.powerUpTimer = POWERUP_FIRST * delayScale;</span>
+<span class="fc" id="L127">        this.coinTimer = COIN_FIRST * delayScale;</span>
+<span class="fc" id="L128">        this.player = new Player(200, START_Y, input);</span>
+<span class="fc" id="L129">        this.player.setEvents(events);</span>
+<span class="pc" id="L130">        this.pool = new ObstaclePool(new ObstacleFactory(speed, () -&gt; player.getHitbox()));</span>
+<span class="fc" id="L131">        score.addListener(scoreHud);</span>
+<span class="fc" id="L132">        scoreHud.setRush(rush);</span>
+<span class="fc" id="L133">        planDoubles();</span>
+<span class="fc" id="L134">    }</span>
+
+    private void planDoubles() {
+<span class="fc bfc" id="L137" title="All 2 branches covered.">        doublesPerGame = rush ? RushMode.MAX_DOUBLES : 2 + random.nextInt(2);</span>
+<span class="fc" id="L138">    }</span>
+
+    private double spawnDelay() {
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        return Math.max(rush ? RushMode.MIN_DELAY : MIN_DELAY, START_DELAY - elapsed * DELAY_DROP);</span>
+    }
+
+    private ObstacleType pickType() {
+<span class="nc" id="L145">        List&lt;ObstacleType&gt; types = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L146">        types.add(ObstacleType.ZAPPER_HORIZONTAL);</span>
+<span class="nc" id="L147">        types.add(ObstacleType.ZAPPER_VERTICAL);</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (elapsed &gt;= DIAGONAL_FROM) {</span>
+<span class="nc" id="L149">            types.add(ObstacleType.ZAPPER_DIAGONAL);</span>
+        }
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        if (elapsed &gt;= MISSILE_FROM) {</span>
+<span class="nc" id="L152">            types.add(ObstacleType.MISSILE);</span>
+        }
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        if (elapsed &gt;= ROTATING_FROM) {</span>
+<span class="nc" id="L155">            types.add(ObstacleType.ZAPPER_ROTATING);</span>
+        }
+<span class="nc" id="L157">        return types.get(random.nextInt(types.size()));</span>
+    }
+
+    private boolean longObstacleOnScreen() {
+<span class="nc" id="L161">        return obstacles.stream().anyMatch(o -&gt;</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">            o.getType() == ObstacleType.ZAPPER_HORIZONTAL_LONG</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">                || o.getType() == ObstacleType.ZAPPER_VERTICAL_LONG);</span>
+    }
+
+    private boolean laserAllowed() {
+<span class="nc bnc" id="L167" title="All 2 branches missed.">        return elapsed - lastLaserAt &gt;= LASER_LOCKOUT;</span>
+    }
+
+    private double spawn() {
+<span class="nc bnc" id="L171" title="All 6 branches missed.">        if (elapsed &gt;= nextLaserAt &amp;&amp; laserAllowed() &amp;&amp; !longObstacleOnScreen()) {</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">            double cooldown = elapsed &gt;= LASER_LATE_AFTER ? LASER_LATE_COOLDOWN : LASER_EARLY_COOLDOWN;</span>
+<span class="nc" id="L173">            nextLaserAt = elapsed + cooldown;</span>
+<span class="nc" id="L174">            lastLaserAt = elapsed;</span>
+<span class="nc" id="L175">            spawnSingle(ObstacleType.LASER);</span>
+<span class="nc" id="L176">            return 0;</span>
+        }
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        int maxPatterns = rush ? RushMode.MAX_PATTERNS : MAX_PATTERNS;</span>
+<span class="nc bnc" id="L179" title="All 6 branches missed.">        if (patterns &lt; maxPatterns &amp;&amp; elapsed &gt;= nextPatternAt &amp;&amp; random.nextDouble() &lt; PATTERN_CHANCE) {</span>
+<span class="nc" id="L180">            patterns++;</span>
+<span class="nc" id="L181">            nextPatternAt = elapsed + PATTERN_COOLDOWN;</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">            if (random.nextBoolean()) {</span>
+<span class="nc" id="L183">                spawnCorridor();</span>
+<span class="nc" id="L184">                return Zapper.Orientation.HORIZONTAL_LONG.width();</span>
+            }
+<span class="nc" id="L186">            spawnGate();</span>
+<span class="nc" id="L187">            return 0;</span>
+        }
+<span class="nc" id="L189">        spawnSingle(pickType());</span>
+<span class="nc" id="L190">        return 0;</span>
+    }
+
+    private void spawnSingle(ObstacleType type) {
+<span class="nc" id="L194">        Obstacle obstacle = pool.acquire(type, SPAWN_X, 0);</span>
+<span class="nc" id="L195">        double maxY = App.HEIGHT - Decor.FLOOR_HEIGHT - obstacle.getHitbox().getHeight();</span>
+<span class="nc" id="L196">        obstacle.reset(SPAWN_X, 20 + random.nextDouble() * (maxY - 20));</span>
+<span class="nc" id="L197">        obstacles.add(obstacle);</span>
+<span class="nc" id="L198">    }</span>
+
+    private void spawnCorridor() {
+<span class="nc" id="L201">        double center = 200 + random.nextDouble() * 240;</span>
+<span class="nc" id="L202">        Obstacle top = pool.acquire(ObstacleType.ZAPPER_HORIZONTAL_LONG, SPAWN_X, 0);</span>
+<span class="nc" id="L203">        top.reset(SPAWN_X, center - CORRIDOR_GAP / 2 - top.getHitbox().getHeight());</span>
+<span class="nc" id="L204">        Obstacle bottom = pool.acquire(ObstacleType.ZAPPER_HORIZONTAL_LONG, SPAWN_X, center + CORRIDOR_GAP / 2);</span>
+<span class="nc" id="L205">        obstacles.add(top);</span>
+<span class="nc" id="L206">        obstacles.add(bottom);</span>
+<span class="nc" id="L207">    }</span>
+
+    private void spawnGate() {
+<span class="nc" id="L210">        double center = 270 + (random.nextDouble() - 0.5) * 80;</span>
+<span class="nc" id="L211">        Obstacle top = pool.acquire(ObstacleType.ZAPPER_VERTICAL_LONG, SPAWN_X, 0);</span>
+<span class="nc" id="L212">        double length = top.getHitbox().getHeight();</span>
+<span class="nc" id="L213">        top.reset(SPAWN_X, center - GATE_GAP / 2 - length);</span>
+<span class="nc" id="L214">        Obstacle bottom = pool.acquire(ObstacleType.ZAPPER_VERTICAL_LONG, SPAWN_X, center + GATE_GAP / 2);</span>
+<span class="nc" id="L215">        obstacles.add(top);</span>
+<span class="nc" id="L216">        obstacles.add(bottom);</span>
+<span class="nc" id="L217">    }</span>
+
+    private void checkDouble() {
+<span class="pc bpc" id="L220" title="2 of 4 branches missed.">        boolean due = doublesDone &lt; doublesPerGame &amp;&amp; elapsed &gt;= nextDoubleAt;</span>
+<span class="pc bpc" id="L221" title="5 of 6 branches missed.">        if (due &amp;&amp; doubleGroup.isEmpty() &amp;&amp; laserAllowed()) {</span>
+<span class="nc" id="L222">            doubleDue = true;</span>
+        }
+<span class="fc" id="L224">    }</span>
+
+    private void spawnDoubleLaser() {
+<span class="nc" id="L227">        double span = 2 * Laser.THICKNESS + DOUBLE_GAP;</span>
+<span class="nc" id="L228">        double floorY = App.HEIGHT - Decor.FLOOR_HEIGHT;</span>
+<span class="nc" id="L229">        double top = 20 + random.nextDouble() * (floorY - 70 - span - 20);</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">        for (int i = 0; i &lt; 2; i++) {</span>
+<span class="nc" id="L231">            Obstacle laser = pool.acquire(ObstacleType.LASER, SPAWN_X, 0);</span>
+<span class="nc" id="L232">            laser.reset(SPAWN_X, top + i * (Laser.THICKNESS + DOUBLE_GAP));</span>
+<span class="nc" id="L233">            obstacles.add(laser);</span>
+<span class="nc" id="L234">            doubleGroup.add(laser);</span>
+        }
+<span class="nc" id="L236">        doublesDone++;</span>
+<span class="nc" id="L237">        nextDoubleAt = elapsed + DOUBLE_COOLDOWN;</span>
+<span class="nc" id="L238">        lastLaserAt = elapsed;</span>
+<span class="nc" id="L239">        doubleDue = false;</span>
+<span class="nc" id="L240">    }</span>
+
+    private void releaseDouble() {
+<span class="pc bpc" id="L243" title="1 of 2 branches missed.">        if (doubleGroup.isEmpty()) {</span>
+<span class="fc" id="L244">            return;</span>
+        }
+<span class="nc bnc" id="L246" title="All 2 branches missed.">        doubleGroup.removeIf(o -&gt; !obstacles.contains(o));</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">        if (doubleGroup.isEmpty()) {</span>
+<span class="nc" id="L248">            spawnTimer = AFTER_DOUBLE_DELAY;</span>
+        }
+<span class="nc" id="L250">    }</span>
+
+    private void spawnScientists() {
+<span class="fc" id="L253">        int count = 1 + random.nextInt(3);</span>
+<span class="fc bfc" id="L254" title="All 2 branches covered.">        for (int i = 0; i &lt; count; i++) {</span>
+<span class="fc" id="L255">            double walk = -70 + random.nextDouble() * 180;</span>
+<span class="fc" id="L256">            double depth = random.nextDouble() * 10;</span>
+<span class="fc" id="L257">            scientists.add(new Scientist(SPAWN_X + i * 45, walk, depth, speed));</span>
+        }
+<span class="fc" id="L259">    }</span>
+
+    private void updateScientists(double dt) {
+<span class="fc" id="L262">        scientistTimer -= dt;</span>
+<span class="fc bfc" id="L263" title="All 2 branches covered.">        if (scientistTimer &lt;= 0) {</span>
+<span class="fc" id="L264">            spawnScientists();</span>
+<span class="fc" id="L265">            scientistTimer = SCIENTIST_MIN_DELAY</span>
+<span class="fc" id="L266">                + random.nextDouble() * (SCIENTIST_MAX_DELAY - SCIENTIST_MIN_DELAY);</span>
+        }
+<span class="fc bfc" id="L268" title="All 2 branches covered.">        for (Scientist s : scientists) {</span>
+<span class="fc" id="L269">            s.update(dt);</span>
+<span class="fc" id="L270">            s.react(player.getHitbox(), player.isThrustPressed());</span>
+<span class="fc" id="L271">        }</span>
+<span class="fc" id="L272">        scientists.removeIf(Scientist::isOffScreen);</span>
+<span class="fc" id="L273">    }</span>
+
+    static double introSpeed(double time) {
+<span class="fc" id="L276">        double t = Math.min(1, Math.max(0, time / BURST_TIME));</span>
+<span class="fc" id="L277">        double remaining = (1 - t) * (1 - t);</span>
+<span class="fc" id="L278">        return WALK_SPEED + (BURST_SPEED - WALK_SPEED) * remaining;</span>
+    }
+
+    private void updateIntro(double dt) {
+<span class="fc" id="L282">        introTime += dt;</span>
+<span class="fc" id="L283">        speed.setSpeed(introSpeed(introTime));</span>
+<span class="fc" id="L284">        decor.update(dt);</span>
+<span class="fc" id="L285">        wall.update(dt);</span>
+<span class="pc bpc" id="L286" title="1 of 4 branches missed.">        if (wall.isStanding() &amp;&amp; wall.touches(player.getHitbox())) {</span>
+<span class="fc" id="L287">            wall.shatter(random);</span>
+<span class="fc" id="L288">            player.enter();</span>
+        }
+<span class="fc bfc" id="L290" title="All 2 branches covered.">        if (decor.getDistance() &gt;= Decor.ROOM_END - PLAYER_FRONT) {</span>
+<span class="fc" id="L291">            intro = false;</span>
+        }
+<span class="fc" id="L293">    }</span>
+
+    private void spawnPowerUp() {
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        PowerUpEffect effect = random.nextBoolean() ? new ShieldEffect() : new VehicleEffect();</span>
+<span class="nc" id="L297">        double maxY = App.HEIGHT - Decor.FLOOR_HEIGHT - 40;</span>
+<span class="nc" id="L298">        powerUps.add(new PowerUp(SPAWN_X, 60 + random.nextDouble() * (maxY - 60), speed, effect));</span>
+<span class="nc" id="L299">    }</span>
+
+    private void updatePowerUps(double dt) {
+<span class="fc" id="L302">        powerUpTimer -= dt;</span>
+<span class="pc bpc" id="L303" title="1 of 2 branches missed.">        if (powerUpTimer &lt;= 0) {</span>
+<span class="nc" id="L304">            spawnPowerUp();</span>
+<span class="nc" id="L305">            powerUpTimer = (POWERUP_MIN_DELAY + random.nextDouble() * (POWERUP_MAX_DELAY - POWERUP_MIN_DELAY)) * delayScale;</span>
+        }
+<span class="pc bpc" id="L307" title="1 of 2 branches missed.">        for (PowerUp p : powerUps) {</span>
+<span class="nc" id="L308">            p.update(dt);</span>
+<span class="nc bnc" id="L309" title="All 4 branches missed.">            if (!p.isCollected() &amp;&amp; p.getHitbox().intersects(player.getHitbox())) {</span>
+<span class="nc" id="L310">                p.onCollision(player);</span>
+            }
+<span class="nc" id="L312">        }</span>
+<span class="pc bnc" id="L313" title="All 4 branches missed.">        powerUps.removeIf(p -&gt; p.isCollected() || p.isOffScreen());</span>
+<span class="fc" id="L314">    }</span>
+
+    private boolean coinSpaceClear() {
+<span class="nc bnc" id="L317" title="All 2 branches missed.">        return obstacles.stream().noneMatch(o -&gt; o.getX() + o.getHitbox().getWidth() &gt; SPAWN_X - COIN_CLEARANCE);</span>
+    }
+
+    private void spawnCoins() {
+<span class="nc" id="L321">        int count = 3 + random.nextInt(5);</span>
+<span class="nc" id="L322">        double maxY = App.HEIGHT - Decor.FLOOR_HEIGHT - Coin.SIZE;</span>
+<span class="nc" id="L323">        double y = 60 + random.nextDouble() * (maxY - 60);</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">        for (int i = 0; i &lt; count; i++) {</span>
+<span class="nc" id="L325">            coins.add(new Coin(SPAWN_X + i * COIN_SPACING, y, speed, score));</span>
+        }
+<span class="nc" id="L327">    }</span>
+
+    private void updateCoins(double dt) {
+<span class="fc" id="L330">        coinTimer -= dt;</span>
+<span class="pc bpc" id="L331" title="3 of 4 branches missed.">        if (coinTimer &lt;= 0 &amp;&amp; coinSpaceClear()) {</span>
+<span class="nc" id="L332">            spawnCoins();</span>
+<span class="nc" id="L333">            coinTimer = (COIN_MIN_DELAY + random.nextDouble() * (COIN_MAX_DELAY - COIN_MIN_DELAY)) * delayScale;</span>
+        }
+<span class="pc bpc" id="L335" title="1 of 2 branches missed.">        for (Coin c : coins) {</span>
+<span class="nc" id="L336">            c.update(dt);</span>
+<span class="nc bnc" id="L337" title="All 4 branches missed.">            if (!c.isCollected() &amp;&amp; c.getHitbox().intersects(player.getHitbox())) {</span>
+<span class="nc" id="L338">                c.onCollision(player);</span>
+<span class="nc" id="L339">                events.publish(GameEvent.COIN_COLLECTED);</span>
+            }
+<span class="nc" id="L341">        }</span>
+<span class="pc bnc" id="L342" title="All 4 branches missed.">        coins.removeIf(c -&gt; c.isCollected() || c.isOffScreen());</span>
+<span class="fc" id="L343">    }</span>
+
+    @Override
+    public void update(double dt) {
+        // Mort : plus de pause, le décor reste figé pendant que le corps retombe
+<span class="fc bfc" id="L348" title="All 2 branches covered.">        if (player.isDead()) {</span>
+<span class="fc" id="L349">            player.update(dt);</span>
+<span class="fc" id="L350">            deathTime += dt;</span>
+<span class="fc bfc" id="L351" title="All 2 branches covered.">            if (deathTime &gt;= DEATH_DELAY) {</span>
+<span class="fc" id="L352">                game.gameOver(this);</span>
+            }
+<span class="fc" id="L354">            return;</span>
+        }
+<span class="fc bfc" id="L356" title="All 2 branches covered.">        if (input.isPausePressed()) {</span>
+<span class="fc" id="L357">            game.pause(this);</span>
+<span class="fc" id="L358">            return;</span>
+        }
+<span class="fc" id="L360">        player.update(dt);</span>
+<span class="fc bfc" id="L361" title="All 2 branches covered.">        if (intro) {</span>
+<span class="fc" id="L362">            updateIntro(dt);</span>
+<span class="fc" id="L363">            return;</span>
+        }
+        // Mode Rush : le temps de jeu passe plus vite, donc tout se débloque et accélère plus tôt
+<span class="fc bfc" id="L366" title="All 2 branches covered.">        elapsed += rush ? dt * RushMode.TIME_FACTOR : dt;</span>
+<span class="fc bfc" id="L367" title="All 2 branches covered.">        speed.setSpeed(Math.min(rush ? RushMode.MAX_SPEED : MAX_SPEED, START_SPEED + elapsed * SPEED_GAIN));</span>
+<span class="fc" id="L368">        score.addDistance(speed.getSpeed() * dt);</span>
+<span class="fc" id="L369">        decor.update(dt);</span>
+<span class="fc" id="L370">        wall.update(dt);</span>
+<span class="fc" id="L371">        updateScientists(dt);</span>
+<span class="fc" id="L372">        updatePowerUps(dt);</span>
+<span class="fc" id="L373">        updateCoins(dt);</span>
+<span class="fc" id="L374">        checkDouble();</span>
+<span class="pc bpc" id="L375" title="1 of 2 branches missed.">        if (doubleDue) {</span>
+<span class="nc bnc" id="L376" title="All 2 branches missed.">            if (obstacles.isEmpty()) {</span>
+<span class="nc" id="L377">                spawnDoubleLaser();</span>
+            }
+<span class="pc bpc" id="L379" title="1 of 2 branches missed.">        } else if (doubleGroup.isEmpty()) {</span>
+<span class="fc" id="L380">            spawnTimer -= dt;</span>
+<span class="pc bpc" id="L381" title="1 of 2 branches missed.">            if (spawnTimer &lt;= 0) {</span>
+<span class="nc" id="L382">                double clearance = spawn();</span>
+<span class="nc" id="L383">                spawnTimer = spawnDelay() + clearance / speed.getSpeed();</span>
+            }
+        }
+<span class="pc bpc" id="L386" title="1 of 2 branches missed.">        for (Obstacle o : obstacles) {</span>
+<span class="nc" id="L387">            o.update(dt);</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">            if (o.collidesWith(player.getHitbox())) {</span>
+<span class="nc" id="L389">                o.onCollision(player);</span>
+            }
+<span class="nc" id="L391">        }</span>
+<span class="fc" id="L392">        obstacles.removeIf(o -&gt; {</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">            if (o.isOffScreen()) {</span>
+<span class="nc" id="L394">                pool.release(o);</span>
+<span class="nc" id="L395">                return true;</span>
+            }
+<span class="nc" id="L397">            return false;</span>
+        });
+<span class="fc" id="L399">        releaseDouble();</span>
+<span class="fc" id="L400">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc" id="L404">        decor.render(gc);</span>
+<span class="nc" id="L405">        wall.render(gc);</span>
+<span class="nc" id="L406">        scientists.forEach(s -&gt; s.render(gc));</span>
+<span class="nc" id="L407">        obstacles.forEach(o -&gt; o.render(gc));</span>
+<span class="nc" id="L408">        powerUps.forEach(p -&gt; p.render(gc));</span>
+<span class="nc" id="L409">        coins.forEach(c -&gt; c.render(gc));</span>
+<span class="nc" id="L410">        player.render(gc);</span>
+<span class="nc" id="L411">        scoreHud.render(gc, 20, 50);</span>
+<span class="nc" id="L412">        indicator.render(gc, player, 20, 140);</span>
+<span class="nc" id="L413">    }</span>
+
+    void showBest(int best) {
+<span class="fc" id="L416">        scoreHud.setBest(best);</span>
+<span class="fc" id="L417">    }</span>
+
+    ScoreManager getScore() {
+<span class="fc" id="L420">        return score;</span>
+    }
+
+    /**
+     * Applique au joueur le skin choisi dans le menu.
+     *
+     * @param path chemin de la feuille de sprites du skin
+     */
+    void useSkin(String path) {
+<span class="fc" id="L429">        player.setSkin(path);</span>
+<span class="fc" id="L430">    }</span>
+
+    /**
+     * Abonne un observateur aux événements de cette partie (pièce ramassée, choc...).
+     *
+     * @param listener l'observateur à prévenir
+     */
+    void addEventListener(GameEventListener listener) {
+<span class="fc" id="L438">        events.addListener(listener);</span>
+<span class="fc" id="L439">    }</span>
+
+    Player getPlayer() {
+<span class="fc" id="L442">        return player;</span>
+    }
+
+    boolean isRush() {
+<span class="fc" id="L446">        return rush;</span>
+    }
+
+    double getElapsed() {
+<span class="fc" id="L450">        return elapsed;</span>
+    }
+
+    double getScrollSpeed() {
+<span class="fc" id="L454">        return speed.getSpeed();</span>
+    }
+
+    Decor getDecor() {
+<span class="fc" id="L458">        return decor;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

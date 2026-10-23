@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClipSoundPlayer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">ClipSoundPlayer.java</span></div><h1>ClipSoundPlayer.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+
+/**
+ * {@link SoundPlayer} basé sur {@code javax.sound} (fourni avec Java) : chaque son est chargé en
+ * mémoire à sa première lecture. Sans carte son ou si le fichier est illisible, le son est
+ * simplement ignoré : le jeu continue en silence.
+ */
+<span class="fc" id="L20">public class ClipSoundPlayer implements SoundPlayer {</span>
+
+<span class="fc" id="L22">    private final Map&lt;String, Clip&gt; clips = new HashMap&lt;&gt;();</span>
+    private boolean reported;
+
+    @Override
+    public void play(String name) {
+        try {
+<span class="fc" id="L28">            Clip clip = clips.get(name);</span>
+<span class="pc bpc" id="L29" title="1 of 2 branches missed.">            if (clip == null) {</span>
+<span class="fc" id="L30">                clip = load(name);</span>
+<span class="fc" id="L31">                clips.put(name, clip);</span>
+            }
+<span class="fc" id="L33">            clip.stop();</span>
+<span class="fc" id="L34">            clip.setFramePosition(0);</span>
+<span class="fc" id="L35">            clip.start();</span>
+<span class="fc" id="L36">        } catch (IOException | UnsupportedAudioFileException | LineUnavailableException</span>
+                 | IllegalArgumentException | IllegalStateException e) {
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">            if (!reported) {</span>
+<span class="fc" id="L39">                reported = true;</span>
+<span class="fc" id="L40">                System.err.println(&quot;Son indisponible (&quot; + name + &quot;) : &quot; + e);</span>
+            }
+<span class="fc" id="L42">        }</span>
+<span class="fc" id="L43">    }</span>
+
+    private static Clip load(String name)
+            throws IOException, UnsupportedAudioFileException, LineUnavailableException {
+<span class="fc" id="L47">        try (InputStream in = new BufferedInputStream(Assets.open(name));</span>
+<span class="fc" id="L48">             AudioInputStream source = AudioSystem.getAudioInputStream(in)) {</span>
+            // Certains .wav sont en nombres flottants : on les convertit en PCM 16 bits, lu partout
+<span class="fc" id="L50">            AudioFormat f = source.getFormat();</span>
+<span class="fc" id="L51">            AudioFormat pcm = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, f.getSampleRate(), 16,</span>
+<span class="fc" id="L52">                f.getChannels(), f.getChannels() * 2, f.getSampleRate(), false);</span>
+<span class="fc" id="L53">            try (AudioInputStream converted = AudioSystem.getAudioInputStream(pcm, source)) {</span>
+<span class="fc" id="L54">                byte[] data = converted.readAllBytes();</span>
+<span class="fc" id="L55">                Clip clip = AudioSystem.getClip();</span>
+<span class="fc" id="L56">                clip.open(pcm, data, 0, data.length);</span>
+<span class="fc" id="L57">                return clip;</span>
+            }
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

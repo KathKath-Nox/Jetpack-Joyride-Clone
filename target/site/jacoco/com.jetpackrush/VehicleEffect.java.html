@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VehicleEffect.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">VehicleEffect.java</span></div><h1>VehicleEffect.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.scene.paint.Color;
+
+/**
+ * Effet du véhicule : remplace le jetpack par le véhicule pendant {@link Riding#DURATION} secondes.
+ */
+<span class="fc" id="L8">public class VehicleEffect implements PowerUpEffect {</span>
+    /**
+     * Passe le joueur dans le véhicule, sauf s'il est mort.
+     *
+     * @param player le joueur concerné
+     */
+    @Override
+    public void apply(Player player) {
+<span class="fc bfc" id="L16" title="All 2 branches covered.">        if (!player.isDead()) {</span>
+<span class="fc" id="L17">            player.setState(new Riding());</span>
+        }
+<span class="fc" id="L19">    }</span>
+
+    /**
+     * Fait sortir le joueur du véhicule : il repasse en chute s'il y était.
+     *
+     * @param player le joueur concerné
+     */
+    @Override
+    public void expire(Player player) {
+<span class="pc bpc" id="L28" title="1 of 2 branches missed.">        if (player.getState() instanceof Riding) {</span>
+<span class="fc" id="L29">            player.setState(new Falling());</span>
+        }
+<span class="fc" id="L31">    }</span>
+
+    /**
+     * Donne la couleur de repli du véhicule.
+     *
+     * @return orange
+     */
+    @Override
+    public Color getColor() {
+<span class="fc" id="L40">        return Color.ORANGE;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

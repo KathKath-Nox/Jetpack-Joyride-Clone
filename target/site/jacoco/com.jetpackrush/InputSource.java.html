@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InputSource.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">InputSource.java</span></div><h1>InputSource.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+/**
+ * Source d'entrée du joueur (pattern Adapter). Le joueur lit ses commandes uniquement par cette
+ * interface, jamais directement le clavier : une manette ou un téléphone peut donc la remplacer.
+ */
+public interface InputSource {
+    /**
+     * Indique si la poussée du jetpack est demandée.
+     *
+     * @return {@code true} tant que la touche de poussée est maintenue
+     */
+    boolean isThrustPressed();
+
+    /**
+     * Indique si la pause vient d'être demandée. Vaut {@code true} seulement à l'image où l'appui
+     * commence. Par défaut {@code false}, pour que les entrées sans touche pause (comme les tests,
+     * qui créent un {@code InputSource} avec une simple lambda) n'aient rien à écrire.
+     *
+     * @return {@code true} à l'image où la pause est demandée
+     */
+    default boolean isPausePressed() {
+<span class="nc" id="L23">        return false;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

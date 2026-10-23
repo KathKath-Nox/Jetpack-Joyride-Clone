@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IntroWall.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">IntroWall.java</span></div><h1>IntroWall.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
+
+/**
+ * Mur d'entrée du début de partie, dessiné en code. Il est juste devant le joueur et éclate en morceaux
+ * dès qu'il le touche. Il va du plafond jusqu'au sol, donc on ne peut pas passer par-dessus.
+ */
+public class IntroWall extends Entity {
+
+    /** Largeur du mur, en pixels. */
+    public static final double WIDTH = 90;
+    /** Hauteur du mur, du plafond jusqu'au sol, en pixels. */
+    public static final double HEIGHT = App.HEIGHT - Decor.FLOOR_HEIGHT;
+    /** Nombre de colonnes de morceaux quand le mur éclate. */
+    public static final int COLUMNS = 4;
+    /** Nombre de lignes de morceaux quand le mur éclate. */
+    public static final int ROWS = 14;
+
+    private static final double GRAVITY = 1500;
+    private static final double LIFETIME = 1.6;
+<span class="fc" id="L27">    private static final Color PANEL = Color.web(&quot;#42577d&quot;);</span>
+<span class="fc" id="L28">    private static final Color FRAME = Color.web(&quot;#7e90b0&quot;);</span>
+<span class="fc" id="L29">    private static final Color DARK = Color.web(&quot;#2a3a5c&quot;);</span>
+<span class="fc" id="L30">    private static final Color STRIPE = Color.web(&quot;#a39a2c&quot;);</span>
+<span class="fc" id="L31">    private static final Color[] CHUNK_COLORS = {PANEL, DARK, FRAME};</span>
+
+<span class="fc" id="L33">    private enum State {</span>
+<span class="fc" id="L34">        STANDING,</span>
+<span class="fc" id="L35">        BROKEN</span>
+    }
+
+    private static final class Fragment {
+        private double x;
+        private double y;
+        private double vx;
+        private double vy;
+        private double angle;
+        private double spin;
+        private Color color;
+    }
+
+    private final GameSpeed speed;
+<span class="fc" id="L49">    private final List&lt;Fragment&gt; fragments = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L50">    private State state = State.STANDING;</span>
+    private double age;
+
+    /**
+     * Crée un mur debout.
+     *
+     * @param x abscisse du bord gauche, en pixels
+     * @param speed vitesse de défilement du décor
+     */
+    public IntroWall(double x, GameSpeed speed) {
+<span class="fc" id="L60">        super(x, 0, WIDTH, HEIGHT);</span>
+<span class="fc" id="L61">        this.speed = speed;</span>
+<span class="fc" id="L62">    }</span>
+
+    /**
+     * Indique si le mur est encore debout.
+     *
+     * @return vrai tant que le mur n'a pas éclaté
+     */
+    public boolean isStanding() {
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        return state == State.STANDING;</span>
+    }
+
+    /**
+     * Indique si le mur n'a plus rien à afficher.
+     *
+     * @return vrai quand les morceaux ont disparu, ou quand le mur est sorti de l'écran sans éclater
+     */
+    public boolean isFinished() {
+<span class="fc bfc" id="L79" title="All 2 branches covered.">        if (state == State.BROKEN) {</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">            return age &gt;= LIFETIME;</span>
+        }
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        return x + width &lt; 0;</span>
+    }
+
+    /**
+     * Donne le nombre de morceaux projetés par l'éclatement.
+     *
+     * @return le nombre de morceaux (0 tant que le mur est debout)
+     */
+    public int fragmentCount() {
+<span class="fc" id="L91">        return fragments.size();</span>
+    }
+
+    /**
+     * Teste si le joueur touche le mur. Un mur éclaté ne bloque plus.
+     *
+     * @param player zone occupée par le joueur
+     * @return vrai si le mur est debout et touche le joueur
+     */
+    public boolean touches(Hitbox player) {
+<span class="fc bfc" id="L101" title="All 4 branches covered.">        return state == State.STANDING &amp;&amp; getHitbox().intersects(player);</span>
+    }
+
+    /**
+     * Fait éclater le mur en morceaux qui volent vers l'avant. Sans effet si le mur est déjà cassé.
+     *
+     * @param random source de hasard pour la direction, la rotation et la couleur des morceaux
+     */
+    public void shatter(Random random) {
+<span class="fc bfc" id="L110" title="All 2 branches covered.">        if (state == State.BROKEN) {</span>
+<span class="fc" id="L111">            return;</span>
+        }
+<span class="fc" id="L113">        state = State.BROKEN;</span>
+<span class="fc" id="L114">        age = 0;</span>
+<span class="fc" id="L115">        double chunkWidth = width / COLUMNS;</span>
+<span class="fc" id="L116">        double chunkHeight = height / ROWS;</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">        for (int column = 0; column &lt; COLUMNS; column++) {</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">            for (int row = 0; row &lt; ROWS; row++) {</span>
+<span class="fc" id="L119">                Fragment fragment = new Fragment();</span>
+<span class="fc" id="L120">                fragment.x = x + column * chunkWidth;</span>
+<span class="fc" id="L121">                fragment.y = y + row * chunkHeight;</span>
+<span class="fc" id="L122">                fragment.vx = 80 + random.nextDouble() * 520;</span>
+<span class="fc" id="L123">                fragment.vy = -500 + random.nextDouble() * 650;</span>
+<span class="fc" id="L124">                fragment.spin = (random.nextDouble() - 0.5) * 1440;</span>
+<span class="fc" id="L125">                fragment.color = CHUNK_COLORS[random.nextInt(CHUNK_COLORS.length)];</span>
+<span class="fc" id="L126">                fragments.add(fragment);</span>
+            }
+        }
+<span class="fc" id="L129">    }</span>
+
+    /**
+     * Fait avancer le mur vers le joueur, ou fait voler ses morceaux s'il a éclaté.
+     *
+     * @param dt temps écoulé depuis la frame précédente, en secondes
+     */
+    @Override
+    public void update(double dt) {
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        if (state == State.STANDING) {</span>
+<span class="fc" id="L139">            x -= speed.getSpeed() * dt;</span>
+<span class="fc" id="L140">            return;</span>
+        }
+<span class="fc" id="L142">        age += dt;</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">        for (Fragment fragment : fragments) {</span>
+<span class="fc" id="L144">            fragment.vy += GRAVITY * dt;</span>
+<span class="fc" id="L145">            fragment.x += fragment.vx * dt;</span>
+<span class="fc" id="L146">            fragment.y += fragment.vy * dt;</span>
+<span class="fc" id="L147">            fragment.angle += fragment.spin * dt;</span>
+<span class="fc" id="L148">        }</span>
+<span class="fc" id="L149">    }</span>
+
+    /**
+     * Dessine le mur, ou ses morceaux s'il a éclaté.
+     *
+     * @param gc contexte graphique du canvas
+     */
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        if (state == State.STANDING) {</span>
+<span class="nc" id="L159">            renderWall(gc);</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        } else if (!isFinished()) {</span>
+<span class="nc" id="L161">            renderFragments(gc);</span>
+        }
+<span class="nc" id="L163">    }</span>
+
+    private void renderWall(GraphicsContext gc) {
+<span class="nc" id="L166">        double left = Math.floor(x);</span>
+<span class="nc" id="L167">        gc.setFill(PANEL);</span>
+<span class="nc" id="L168">        gc.fillRect(left, y, width, height);</span>
+<span class="nc" id="L169">        gc.setFill(FRAME);</span>
+<span class="nc" id="L170">        gc.fillRect(left, y, 10, height);</span>
+<span class="nc" id="L171">        gc.fillRect(left + width - 10, y, 10, height);</span>
+<span class="nc" id="L172">        gc.setFill(DARK);</span>
+<span class="nc" id="L173">        gc.fillRect(left + 10, y, 4, height);</span>
+<span class="nc" id="L174">        gc.fillRect(left + width - 14, y, 4, height);</span>
+<span class="nc" id="L175">        gc.setStroke(DARK);</span>
+<span class="nc" id="L176">        gc.setLineWidth(3);</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        for (double lineY = 90; lineY &lt; height; lineY += 90) {</span>
+<span class="nc" id="L178">            gc.strokeLine(left + 14, y + lineY, left + width - 14, y + lineY);</span>
+        }
+<span class="nc" id="L180">        gc.setFill(STRIPE);</span>
+<span class="nc" id="L181">        gc.fillRect(left + 14, y + 400, width - 28, 4);</span>
+<span class="nc" id="L182">        gc.fillRect(left + 14, y + 411, width - 28, 20);</span>
+<span class="nc" id="L183">        gc.setFill(FRAME);</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        for (double rivetY = 40; rivetY &lt; height; rivetY += 90) {</span>
+<span class="nc" id="L185">            gc.fillOval(left + 18, y + rivetY, 6, 6);</span>
+<span class="nc" id="L186">            gc.fillOval(left + width - 24, y + rivetY, 6, 6);</span>
+        }
+<span class="nc" id="L188">    }</span>
+
+    private void renderFragments(GraphicsContext gc) {
+<span class="nc" id="L191">        double alpha = Math.max(0, 1 - age / LIFETIME);</span>
+<span class="nc" id="L192">        double chunkWidth = width / COLUMNS;</span>
+<span class="nc" id="L193">        double chunkHeight = height / ROWS;</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        for (Fragment fragment : fragments) {</span>
+<span class="nc" id="L195">            gc.save();</span>
+<span class="nc" id="L196">            gc.translate(fragment.x + chunkWidth / 2, fragment.y + chunkHeight / 2);</span>
+<span class="nc" id="L197">            gc.rotate(fragment.angle);</span>
+<span class="nc" id="L198">            gc.setGlobalAlpha(alpha);</span>
+<span class="nc" id="L199">            gc.setFill(fragment.color);</span>
+<span class="nc" id="L200">            gc.fillRect(-chunkWidth / 2, -chunkHeight / 2, chunkWidth, chunkHeight);</span>
+<span class="nc" id="L201">            gc.restore();</span>
+<span class="nc" id="L202">        }</span>
+<span class="nc" id="L203">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

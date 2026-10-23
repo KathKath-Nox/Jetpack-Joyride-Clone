@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LevelGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">LevelGenerator.java</span></div><h1>LevelGenerator.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.List;
+import java.util.Random;
+
+/**
+ * Générateur de niveau : enchaîne des {@link Chunk tronçons} préfabriqués tirés au hasard,
+ * séparés par un espace libre. Tous les tronçons sont vérifiés franchissables à la création.
+ *
+ * &lt;p&gt;Le générateur ne connaît pas la partie : {@link #update(double)} renvoie les obstacles à
+ * ajouter, c'est à l'appelant de les mettre à jour, les dessiner et les retirer.
+ */
+public class LevelGenerator {
+
+    /** Où apparaît le bord gauche d'un tronçon : juste hors de l'écran à droite. */
+    static final double SPAWN_X = App.WIDTH + 50;
+    /** Espace libre entre deux tronçons, en pixels. */
+    static final double GAP = 450;
+    /** Distance de défilement avant le premier tronçon, en pixels. */
+    static final double FIRST_DISTANCE = 600;
+
+    private static final double H = Chunk.PLAY_BOTTOM;
+
+    private final GameSpeed speed;
+    private final Random random;
+    private final List&lt;Chunk&gt; chunks;
+<span class="fc" id="L27">    private double remaining = FIRST_DISTANCE;</span>
+    private Chunk last;
+
+    /**
+     * @param speed  vitesse de défilement du jeu
+     * @param random source de hasard (fixée dans les tests)
+     * @param chunks les tronçons possibles, au moins un, tous franchissables
+     * @throws IllegalArgumentException si la liste est vide ou si un tronçon est infranchissable
+     */
+<span class="fc" id="L36">    public LevelGenerator(GameSpeed speed, Random random, List&lt;Chunk&gt; chunks) {</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        if (chunks.isEmpty()) {</span>
+<span class="fc" id="L38">            throw new IllegalArgumentException(&quot;Il faut au moins un tronçon&quot;);</span>
+        }
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        for (Chunk c : chunks) {</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">            if (!c.isPassable()) {</span>
+<span class="fc" id="L42">                throw new IllegalArgumentException(&quot;Tronçon infranchissable : &quot; + c);</span>
+            }
+<span class="fc" id="L44">        }</span>
+<span class="fc" id="L45">        this.speed = speed;</span>
+<span class="fc" id="L46">        this.random = random;</span>
+<span class="fc" id="L47">        this.chunks = List.copyOf(chunks);</span>
+<span class="fc" id="L48">    }</span>
+
+    /**
+     * Crée un générateur avec les tronçons de base.
+     *
+     * @param speed  vitesse de défilement du jeu
+     * @param random source de hasard
+     * @return le générateur
+     */
+    public static LevelGenerator withDefaultChunks(GameSpeed speed, Random random) {
+<span class="fc" id="L58">        return new LevelGenerator(speed, random, defaultChunks());</span>
+    }
+
+    /**
+     * Les tronçons de base, tous faits de rectangles factices.
+     *
+     * @return la liste des tronçons préfabriqués
+     */
+    static List&lt;Chunk&gt; defaultChunks() {
+<span class="fc" id="L67">        return List.of(</span>
+<span class="fc" id="L68">            new Chunk(&quot;bloc-milieu&quot;, 60, List.of(new Chunk.Rect(0, 260, 60, 120))),</span>
+<span class="fc" id="L69">            new Chunk(&quot;bloc-sol&quot;, 80, List.of(new Chunk.Rect(0, H - 160, 80, 160))),</span>
+<span class="fc" id="L70">            new Chunk(&quot;bloc-plafond&quot;, 80, List.of(new Chunk.Rect(0, 0, 80, 220))),</span>
+<span class="fc" id="L71">            new Chunk(&quot;couloir&quot;, 400, List.of(</span>
+                new Chunk.Rect(0, 0, 400, 250),
+                new Chunk.Rect(0, 450, 400, H - 450))),
+<span class="fc" id="L74">            new Chunk(&quot;escalier&quot;, 420, List.of(</span>
+                new Chunk.Rect(0, 0, 60, 300),
+                new Chunk.Rect(180, H - 300, 60, 300),
+                new Chunk.Rect(360, 0, 60, 300))));
+    }
+
+    /**
+     * Fait avancer le niveau.
+     *
+     * @param dt temps écoulé depuis la frame précédente, en secondes
+     * @return les obstacles du tronçon qui vient d'apparaître, vide la plupart du temps
+     */
+    public List&lt;Obstacle&gt; update(double dt) {
+<span class="fc" id="L87">        remaining -= speed.getSpeed() * dt;</span>
+<span class="fc bfc" id="L88" title="All 2 branches covered.">        if (remaining &gt; 0) {</span>
+<span class="fc" id="L89">            return List.of();</span>
+        }
+<span class="fc" id="L91">        Chunk chunk = pick();</span>
+        // Le dépassement est repris dans la position, pour garder des espaces réguliers
+<span class="fc" id="L93">        double originX = SPAWN_X - remaining;</span>
+<span class="fc" id="L94">        remaining += chunk.getWidth() + GAP;</span>
+<span class="fc" id="L95">        last = chunk;</span>
+<span class="fc" id="L96">        return chunk.spawn(originX, speed);</span>
+    }
+
+    private Chunk pick() {
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        if (chunks.size() == 1) {</span>
+<span class="fc" id="L101">            return chunks.get(0);</span>
+        }
+        Chunk chunk;
+        do {
+<span class="fc" id="L105">            chunk = chunks.get(random.nextInt(chunks.size()));</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        } while (chunk == last);</span>
+<span class="fc" id="L107">        return chunk;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

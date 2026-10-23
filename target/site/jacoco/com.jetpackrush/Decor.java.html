@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Decor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Decor.java</span></div><h1>Decor.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.io.IOException;
+import java.io.InputStream;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
+
+/**
+ * Décor défilant. Dans l'ordre : le couloir de départ, le mur d'entrée (géré à part par IntroWall),
+ * la salle du début, puis une suite de décors (couloir métallique, labo, marécage, décharge)
+ * qui se remplacent toutes les {@code ZONE_LENGTH} pixels avec un fondu enchaîné.
+ */
+public class Decor {
+
+    /** Hauteur du sol en pixels (le sol occupe le bas de la fenêtre). */
+    public static final double FLOOR_HEIGHT = 80;
+    /** Largeur de la salle du début, en pixels. */
+    public static final double ROOM_WIDTH = 1049;
+    /** Position du mur d'entrée à l'écran au départ : juste devant le joueur. */
+    public static final double ENTRY_X = 238;
+    /** Position, dans le monde, de la fin de la salle. */
+    public static final double ROOM_END = ENTRY_X + ROOM_WIDTH;
+
+    /** Les décors qui se succèdent, dans l'ordre. */
+<span class="fc" id="L27">    enum Kind {</span>
+<span class="fc" id="L28">        METAL(&quot;background2.png&quot;),</span>
+<span class="fc" id="L29">        LAB(&quot;background.png&quot;),</span>
+<span class="fc" id="L30">        SWAMP(&quot;swamp_double.png&quot;),</span>
+<span class="fc" id="L31">        JUNKYARD(&quot;junkyard_double.png&quot;);</span>
+
+        private final String image;
+
+<span class="fc" id="L35">        Kind(String image) {</span>
+<span class="fc" id="L36">            this.image = image;</span>
+<span class="fc" id="L37">        }</span>
+
+        String image() {
+<span class="nc" id="L40">            return image;</span>
+        }
+    }
+
+    static final double STRIPE_WIDTH = 160;
+    static final double PATTERN_WIDTH = 2 * STRIPE_WIDTH;
+    static final double ZONE_LENGTH = 21000;
+    static final double TRANSITION = 100;
+    static final double ROOM_FADE = 60;
+    static final double CORRIDOR_START = ROOM_END - ROOM_FADE;
+
+    private static final double SLICE = 12;
+
+    private static final String ROOM = &quot;intro_room.png&quot;;
+    private static final double LAB_SOURCE_Y = 40;
+    private static final double LAB_SOURCE_HEIGHT = 260;
+    private static final double LAB_SCALE = App.HEIGHT / LAB_SOURCE_HEIGHT;
+
+<span class="fc" id="L58">    private static final Color ROOM_FALLBACK = Color.web(&quot;#10182e&quot;);</span>
+<span class="fc" id="L59">    private static final Color SKY_LIGHT = Color.web(&quot;#8ec5e8&quot;);</span>
+<span class="fc" id="L60">    private static final Color SKY_DARK = Color.web(&quot;#7fb9de&quot;);</span>
+<span class="fc" id="L61">    private static final Color FLOOR_LIGHT = Color.web(&quot;#6b4f3a&quot;);</span>
+<span class="fc" id="L62">    private static final Color FLOOR_DARK = Color.web(&quot;#5a412f&quot;);</span>
+
+    private final GameSpeed speed;
+    private final double zoneLength;
+    private double offset;
+    private double distance;
+    /** Décor du labo agrandi une seule fois, pour ne pas le redimensionner à chaque frame. */
+    private Image labScaled;
+    private int labCropY;
+    private boolean labPrepared;
+
+    /**
+     * Crée le décor, au départ de la partie.
+     *
+     * @param speed source de la vitesse de défilement
+     */
+    public Decor(GameSpeed speed) {
+<span class="fc" id="L79">        this(speed, ZONE_LENGTH);</span>
+<span class="fc" id="L80">    }</span>
+
+    /**
+     * Crée le décor avec une longueur de zone choisie (le mode Rush utilise des zones courtes).
+     *
+     * @param speed      source de la vitesse de défilement
+     * @param zoneLength longueur d'un décor avant le suivant, en pixels
+     * @throws IllegalArgumentException si la longueur n'est pas strictement positive
+     */
+<span class="fc" id="L89">    public Decor(GameSpeed speed, double zoneLength) {</span>
+<span class="fc bfc" id="L90" title="All 2 branches covered.">        if (zoneLength &lt;= 0) {</span>
+<span class="fc" id="L91">            throw new IllegalArgumentException(&quot;La longueur d'une zone doit être positive&quot;);</span>
+        }
+<span class="fc" id="L93">        this.speed = speed;</span>
+<span class="fc" id="L94">        this.zoneLength = zoneLength;</span>
+<span class="fc" id="L95">    }</span>
+
+    /**
+     * Donne la longueur d'une zone de décor.
+     *
+     * @return la longueur d'un décor avant le suivant, en pixels
+     */
+    public double getZoneLength() {
+<span class="fc" id="L103">        return zoneLength;</span>
+    }
+
+    /**
+     * Donne le décor d'une zone : ils se suivent dans l'ordre et on recommence à la fin.
+     *
+     * @param zone numéro de la zone
+     * @return le décor de cette zone
+     */
+    static Kind kindOf(int zone) {
+<span class="fc" id="L113">        Kind[] kinds = Kind.values();</span>
+<span class="fc" id="L114">        return kinds[Math.floorMod(zone, kinds.length)];</span>
+    }
+
+    /**
+     * Courbe douce du fondu entre deux décors.
+     *
+     * @param t avancement du fondu, entre 0 (début) et 1 (fin) ; les valeurs hors de cet intervalle sont ramenées dedans
+     * @return l'opacité du nouveau décor, entre 0 et 1
+     */
+    static double blend(double t) {
+<span class="fc" id="L124">        double c = Math.min(1, Math.max(0, t));</span>
+<span class="fc" id="L125">        return c * c * (3 - 2 * c);</span>
+    }
+
+    /**
+     * Fait avancer le défilement.
+     *
+     * @param dt temps écoulé depuis la frame précédente, en secondes
+     */
+    public void update(double dt) {
+<span class="fc" id="L134">        double step = speed.getSpeed() * dt;</span>
+<span class="fc" id="L135">        offset = (offset + step) % PATTERN_WIDTH;</span>
+<span class="fc" id="L136">        distance += step;</span>
+<span class="fc" id="L137">    }</span>
+
+    /** Remet le décor au départ de la partie. */
+    public void reset() {
+<span class="fc" id="L141">        offset = 0;</span>
+<span class="fc" id="L142">        distance = 0;</span>
+<span class="fc" id="L143">    }</span>
+
+    /**
+     * Donne le décalage du motif de secours (les bandes colorées).
+     *
+     * @return le décalage en pixels
+     */
+    public double getOffset() {
+<span class="fc" id="L151">        return offset;</span>
+    }
+
+    /**
+     * Donne la distance parcourue depuis le départ.
+     *
+     * @return la distance en pixels
+     */
+    public double getDistance() {
+<span class="fc" id="L160">        return distance;</span>
+    }
+
+    /**
+     * Indique si la salle du début n'est pas encore entièrement passée.
+     *
+     * @return vrai tant que la fin de la salle n'a pas quitté l'écran par la gauche
+     */
+    public boolean isInRoom() {
+<span class="fc bfc" id="L169" title="All 2 branches covered.">        return distance &lt; ROOM_END;</span>
+    }
+
+    /**
+     * Donne le numéro de la zone où l'on se trouve (0 pour le couloir métallique, 1 pour le labo,
+     * 2 pour le marécage, 3 pour la décharge, puis ça recommence). Avant le couloir, c'est 0.
+     *
+     * @return le numéro de zone
+     */
+    public int getZone() {
+<span class="fc" id="L179">        return (int) Math.floor(Math.max(0, distance - CORRIDOR_START) / zoneLength);</span>
+    }
+
+    /**
+     * Dessine le décor.
+     *
+     * @param gc contexte graphique du canvas
+     */
+    public void render(GraphicsContext gc) {
+<span class="nc" id="L188">        prepareLab();</span>
+<span class="nc" id="L189">        gc.setFill(Color.BLACK);</span>
+<span class="nc" id="L190">        gc.fillRect(0, 0, App.WIDTH, App.HEIGHT);</span>
+<span class="nc" id="L191">        renderEntryCorridor(gc);</span>
+<span class="nc" id="L192">        int first = getZone();</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        for (int zone = Math.max(0, first - 1); zoneStart(zone) - TRANSITION / 2 &lt; App.WIDTH; zone++) {</span>
+<span class="nc" id="L194">            renderZone(gc, zone);</span>
+        }
+<span class="nc" id="L196">        renderRoom(gc);</span>
+<span class="nc" id="L197">    }</span>
+
+    /**
+     * Agrandit l'image du labo une seule fois, à la première frame. Ensuite elle est dessinée
+     * à taille réelle, ce qui est bien plus léger que de l'agrandir à chaque frame.
+     * Si quelque chose échoue, on garde l'ancien dessin (agrandi à chaque frame).
+     */
+    private void prepareLab() {
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        if (labPrepared) {</span>
+<span class="nc" id="L206">            return;</span>
+        }
+<span class="nc" id="L208">        labPrepared = true;</span>
+<span class="nc" id="L209">        Image source = Sprites.get(Kind.LAB.image());</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">        if (source == null) {</span>
+<span class="nc" id="L211">            return;</span>
+        }
+<span class="nc" id="L213">        double width = Math.ceil(source.getWidth() * LAB_SCALE) + 1;</span>
+<span class="nc" id="L214">        double height = Math.round(source.getHeight() * LAB_SCALE);</span>
+<span class="nc" id="L215">        try (InputStream in = Decor.class.getResourceAsStream(&quot;/assets/&quot; + Kind.LAB.image())) {</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">            if (in == null) {</span>
+<span class="nc" id="L217">                return;</span>
+            }
+<span class="nc" id="L219">            Image scaled = new Image(in, width, height, false, true);</span>
+<span class="nc" id="L220">            int cropY = (int) Math.round(LAB_SOURCE_Y * LAB_SCALE);</span>
+<span class="nc bnc" id="L221" title="All 4 branches missed.">            if (scaled.isError() || cropY + App.HEIGHT &gt; scaled.getHeight()) {</span>
+<span class="nc" id="L222">                return;</span>
+            }
+<span class="nc" id="L224">            labScaled = scaled;</span>
+<span class="nc" id="L225">            labCropY = cropY;</span>
+<span class="nc bnc" id="L226" title="All 4 branches missed.">        } catch (IOException | RuntimeException e) {</span>
+<span class="nc" id="L227">            labScaled = null;</span>
+<span class="nc" id="L228">        }</span>
+<span class="nc" id="L229">    }</span>
+
+    private double zoneStart(int zone) {
+<span class="nc" id="L232">        return CORRIDOR_START + zone * zoneLength - distance;</span>
+    }
+
+    private void renderEntryCorridor(GraphicsContext gc) {
+<span class="nc" id="L236">        double edge = Math.floor(ENTRY_X - distance);</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">        if (edge &lt;= 0) {</span>
+<span class="nc" id="L238">            return;</span>
+        }
+<span class="nc" id="L240">        Image image = Sprites.get(Kind.METAL.image());</span>
+<span class="nc" id="L241">        gc.save();</span>
+<span class="nc" id="L242">        gc.beginPath();</span>
+<span class="nc" id="L243">        gc.rect(0, 0, edge, App.HEIGHT);</span>
+<span class="nc" id="L244">        gc.clip();</span>
+<span class="nc bnc" id="L245" title="All 2 branches missed.">        if (image == null) {</span>
+<span class="nc" id="L246">            renderStripes(gc);</span>
+        } else {
+<span class="nc" id="L248">            drawTile(gc, image, edge - image.getWidth(), image.getWidth(), false, false);</span>
+        }
+<span class="nc" id="L250">        gc.restore();</span>
+<span class="nc" id="L251">    }</span>
+
+    private void renderRoom(GraphicsContext gc) {
+<span class="nc" id="L254">        double x = Math.floor(ENTRY_X - distance);</span>
+<span class="nc bnc" id="L255" title="All 4 branches missed.">        if (x &gt;= App.WIDTH || x + ROOM_WIDTH &lt;= 0) {</span>
+<span class="nc" id="L256">            return;</span>
+        }
+<span class="nc" id="L258">        Image room = Sprites.get(ROOM);</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">        if (room == null) {</span>
+<span class="nc" id="L260">            gc.setFill(ROOM_FALLBACK);</span>
+<span class="nc" id="L261">            gc.fillRect(x, 0, ROOM_WIDTH, App.HEIGHT - FLOOR_HEIGHT);</span>
+<span class="nc" id="L262">            return;</span>
+        }
+<span class="nc" id="L264">        gc.drawImage(room, x, 0);</span>
+<span class="nc" id="L265">    }</span>
+
+    private void renderZone(GraphicsContext gc, int zone) {
+<span class="nc" id="L268">        double half = TRANSITION / 2;</span>
+<span class="nc" id="L269">        double start = Math.floor(zoneStart(zone));</span>
+<span class="nc" id="L270">        double end = Math.floor(zoneStart(zone + 1));</span>
+<span class="nc bnc" id="L271" title="All 2 branches missed.">        double left = zone == 0 ? Math.max(0, start) : Math.max(0, start - half);</span>
+<span class="nc" id="L272">        double right = Math.min(App.WIDTH, end + half);</span>
+<span class="nc bnc" id="L273" title="All 2 branches missed.">        if (right &lt;= left) {</span>
+<span class="nc" id="L274">            return;</span>
+        }
+<span class="nc" id="L276">        Kind kind = kindOf(zone);</span>
+<span class="nc" id="L277">        Image image = Sprites.get(kind.image());</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        if (zone == 0) {</span>
+<span class="nc" id="L279">            drawKind(gc, kind, image, start, left, right, 1);</span>
+<span class="nc" id="L280">            return;</span>
+        }
+<span class="nc" id="L282">        double fullFrom = Math.min(right, start + half);</span>
+<span class="nc bnc" id="L283" title="All 2 branches missed.">        for (double x = left; x &lt; fullFrom; x += SLICE) {</span>
+<span class="nc" id="L284">            double t = (x + SLICE / 2 - (start - half)) / TRANSITION;</span>
+<span class="nc" id="L285">            drawKind(gc, kind, image, start, x, Math.min(fullFrom, x + SLICE), blend(t));</span>
+        }
+<span class="nc bnc" id="L287" title="All 2 branches missed.">        if (fullFrom &lt; right) {</span>
+<span class="nc" id="L288">            drawKind(gc, kind, image, start, fullFrom, right, 1);</span>
+        }
+<span class="nc" id="L290">    }</span>
+
+    private void drawKind(GraphicsContext gc, Kind kind, Image image, double origin,
+                          double left, double right, double alpha) {
+<span class="nc" id="L294">        gc.save();</span>
+<span class="nc" id="L295">        gc.beginPath();</span>
+<span class="nc" id="L296">        gc.rect(left, 0, right - left, App.HEIGHT);</span>
+<span class="nc" id="L297">        gc.clip();</span>
+<span class="nc" id="L298">        gc.setGlobalAlpha(alpha);</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">        if (image == null) {</span>
+<span class="nc" id="L300">            renderStripes(gc);</span>
+        } else {
+<span class="nc" id="L302">            drawTiles(gc, kind, image, origin);</span>
+        }
+<span class="nc" id="L304">        gc.restore();</span>
+<span class="nc" id="L305">    }</span>
+
+    private void drawTiles(GraphicsContext gc, Kind kind, Image image, double origin) {
+<span class="nc bnc" id="L308" title="All 2 branches missed.">        boolean lab = kind == Kind.LAB;</span>
+<span class="nc bnc" id="L309" title="All 4 branches missed.">        boolean alternate = kind == Kind.METAL || lab;</span>
+<span class="nc bnc" id="L310" title="All 2 branches missed.">        double tileWidth = lab ? image.getWidth() * LAB_SCALE : image.getWidth();</span>
+<span class="nc" id="L311">        int first = (int) Math.floor(-origin / tileWidth);</span>
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        for (int k = first; origin + k * tileWidth &lt; App.WIDTH; k++) {</span>
+<span class="nc" id="L313">            double x = Math.floor(origin + k * tileWidth);</span>
+<span class="nc bnc" id="L314" title="All 4 branches missed.">            drawTile(gc, image, x, tileWidth, lab, alternate &amp;&amp; Math.floorMod(k, 2) == 1);</span>
+        }
+<span class="nc" id="L316">    }</span>
+
+    private void drawTile(GraphicsContext gc, Image image, double x, double tileWidth, boolean lab, boolean flipped) {
+<span class="nc bnc" id="L319" title="All 2 branches missed.">        double width = lab ? Math.ceil(tileWidth) + 1 : tileWidth;</span>
+<span class="nc" id="L320">        gc.save();</span>
+<span class="nc bnc" id="L321" title="All 2 branches missed.">        if (flipped) {</span>
+<span class="nc" id="L322">            gc.translate(x + width, 0);</span>
+<span class="nc" id="L323">            gc.scale(-1, 1);</span>
+        } else {
+<span class="nc" id="L325">            gc.translate(x, 0);</span>
+        }
+<span class="nc bnc" id="L327" title="All 4 branches missed.">        if (lab &amp;&amp; labScaled != null) {</span>
+<span class="nc" id="L328">            gc.drawImage(labScaled, 0, labCropY, labScaled.getWidth(), App.HEIGHT,</span>
+<span class="nc" id="L329">                0, 0, labScaled.getWidth(), App.HEIGHT);</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">        } else if (lab) {</span>
+<span class="nc" id="L331">            gc.drawImage(image, 0, LAB_SOURCE_Y, image.getWidth(), LAB_SOURCE_HEIGHT,</span>
+                0, 0, width, App.HEIGHT);
+        } else {
+<span class="nc" id="L334">            gc.drawImage(image, 0, 0);</span>
+        }
+<span class="nc" id="L336">        gc.restore();</span>
+<span class="nc" id="L337">    }</span>
+
+    private void renderStripes(GraphicsContext gc) {
+<span class="nc" id="L340">        double floorY = App.HEIGHT - FLOOR_HEIGHT;</span>
+<span class="nc" id="L341">        int stripes = (int) Math.ceil(App.WIDTH / STRIPE_WIDTH) + 2;</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">        for (int i = 0; i &lt; stripes; i++) {</span>
+<span class="nc" id="L343">            double x = i * STRIPE_WIDTH - offset;</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">            boolean even = i % 2 == 0;</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">            gc.setFill(even ? SKY_LIGHT : SKY_DARK);</span>
+<span class="nc" id="L346">            gc.fillRect(x, 0, STRIPE_WIDTH, floorY);</span>
+<span class="nc bnc" id="L347" title="All 2 branches missed.">            gc.setFill(even ? FLOOR_LIGHT : FLOOR_DARK);</span>
+<span class="nc" id="L348">            gc.fillRect(x, floorY, STRIPE_WIDTH, FLOOR_HEIGHT);</span>
+        }
+<span class="nc" id="L350">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

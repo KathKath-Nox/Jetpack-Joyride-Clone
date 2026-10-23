@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>KeyBindings.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">KeyBindings.java</span></div><h1>KeyBindings.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import javafx.scene.input.KeyCode;
+
+/**
+ * Configuration des touches du jeu : associe chaque {@link Action} à une touche.
+ *
+ * &lt;p&gt;Cette classe ne dépend que de l'énumération {@link KeyCode} : elle se teste sans fenêtre
+ * JavaFX. Elle gère les conflits (une touche ne peut servir qu'à une seule action), les touches
+ * réservées aux menus et la remise à zéro des réglages par défaut.
+ */
+public class KeyBindings {
+
+    /** Actions dont la touche peut être changée par le joueur. */
+<span class="fc" id="L21">    public enum Action {</span>
+        /** Poussée du jetpack (ou saut dans un véhicule). */
+<span class="fc" id="L23">        THRUST(&quot;Jetpack&quot;, KeyCode.SPACE),</span>
+        /** Pause / reprise en jeu. */
+<span class="fc" id="L25">        PAUSE(&quot;Pause&quot;, KeyCode.ESCAPE);</span>
+
+        private final String label;
+        private final KeyCode defaultKey;
+
+<span class="fc" id="L30">        Action(String label, KeyCode defaultKey) {</span>
+<span class="fc" id="L31">            this.label = label;</span>
+<span class="fc" id="L32">            this.defaultKey = defaultKey;</span>
+<span class="fc" id="L33">        }</span>
+
+        /** @return le nom affiché dans l'écran « Contrôles » */
+        public String getLabel() {
+<span class="fc" id="L37">            return label;</span>
+        }
+
+        /** @return la touche par défaut de cette action */
+        public KeyCode getDefaultKey() {
+<span class="fc" id="L42">            return defaultKey;</span>
+        }
+    }
+
+    /** Touches utilisées par les menus ou le plein écran : elles ne peuvent pas être réassignées. */
+<span class="fc" id="L47">    private static final Set&lt;KeyCode&gt; RESERVED = EnumSet.of(</span>
+            KeyCode.ENTER, KeyCode.UP, KeyCode.DOWN, KeyCode.LEFT, KeyCode.RIGHT, KeyCode.F11);
+
+<span class="fc" id="L50">    private final Map&lt;Action, KeyCode&gt; keys = new EnumMap&lt;&gt;(Action.class);</span>
+
+    /** Crée une configuration avec les touches par défaut. */
+<span class="fc" id="L53">    public KeyBindings() {</span>
+<span class="fc" id="L54">        reset();</span>
+<span class="fc" id="L55">    }</span>
+
+    /**
+     * @param action l'action voulue
+     * @return la touche actuellement associée à cette action
+     */
+    public KeyCode get(Action action) {
+<span class="fc" id="L62">        return keys.get(action);</span>
+    }
+
+    /**
+     * @param key une touche
+     * @return true si cette touche est réservée (menus, plein écran) et donc non réassignable
+     */
+    public boolean isReserved(KeyCode key) {
+<span class="fc" id="L70">        return RESERVED.contains(key);</span>
+    }
+
+    /**
+     * Cherche l'autre action qui utilise déjà une touche.
+     *
+     * @param action l'action que l'on veut modifier (elle-même n'est jamais un conflit)
+     * @param key la touche envisagée
+     * @return l'action en conflit, ou vide si la touche est libre
+     */
+    public Optional&lt;Action&gt; conflictWith(Action action, KeyCode key) {
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        for (Map.Entry&lt;Action, KeyCode&gt; entry : keys.entrySet()) {</span>
+<span class="fc bfc" id="L82" title="All 4 branches covered.">            if (entry.getKey() != action &amp;&amp; entry.getValue() == key) {</span>
+<span class="fc" id="L83">                return Optional.of(entry.getKey());</span>
+            }
+<span class="fc" id="L85">        }</span>
+<span class="fc" id="L86">        return Optional.empty();</span>
+    }
+
+    /**
+     * Associe une touche à une action, sauf si la touche est réservée ou déjà prise.
+     * En cas d'échec, la configuration ne change pas.
+     *
+     * @param action l'action à modifier
+     * @param key la nouvelle touche
+     * @return true si la touche a été assignée, false si elle est refusée
+     */
+    public boolean bind(Action action, KeyCode key) {
+<span class="fc bfc" id="L98" title="All 8 branches covered.">        if (action == null || key == null || isReserved(key) || conflictWith(action, key).isPresent()) {</span>
+<span class="fc" id="L99">            return false;</span>
+        }
+<span class="fc" id="L101">        keys.put(action, key);</span>
+<span class="fc" id="L102">        return true;</span>
+    }
+
+    /**
+     * @param action l'action testée
+     * @param key la touche pressée
+     * @return true si cette touche déclenche cette action
+     */
+    public boolean matches(Action action, KeyCode key) {
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        return keys.get(action) == key;</span>
+    }
+
+    /**
+     * @param key la touche pressée
+     * @return l'action associée à cette touche, ou vide si aucune
+     */
+    public Optional&lt;Action&gt; actionFor(KeyCode key) {
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        for (Map.Entry&lt;Action, KeyCode&gt; entry : keys.entrySet()) {</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">            if (entry.getValue() == key) {</span>
+<span class="fc" id="L121">                return Optional.of(entry.getKey());</span>
+            }
+<span class="fc" id="L123">        }</span>
+<span class="fc" id="L124">        return Optional.empty();</span>
+    }
+
+    /** Remet toutes les touches à leur valeur par défaut. */
+    public void reset() {
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        for (Action action : Action.values()) {</span>
+<span class="fc" id="L130">            keys.put(action, action.getDefaultKey());</span>
+        }
+<span class="fc" id="L132">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

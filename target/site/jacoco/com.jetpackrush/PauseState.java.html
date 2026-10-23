@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PauseState.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">PauseState.java</span></div><h1>PauseState.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.geometry.VPos;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.KeyCode;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
+
+/**
+ * PAUSE : écran affiché par-dessus la partie figée quand le joueur appuie sur Échap.
+ *
+ * &lt;p&gt;« Reprendre » (ou Échap) lance un compte à rebours de 3 secondes avant de relancer
+ * la partie, pour laisser au joueur le temps de se préparer ; Échap pendant le compte à
+ * rebours revient au menu de pause. « Quitter » abandonne la partie et revient au menu principal.
+ */
+public class PauseState implements GameState {
+
+    // Options de la pause, dans l'ordre d'affichage (de haut en bas)
+    static final int RESUME = 0;
+    static final int QUIT = 1;
+<span class="fc" id="L22">    private static final String[] OPTIONS = {&quot;REPRENDRE&quot;, &quot;QUITTER&quot;};</span>
+
+    /** Durée du compte à rebours avant la reprise, en secondes. */
+    static final double COUNTDOWN_DURATION = 3;
+
+    private static final double TITLE_Y = 250;
+    private static final double OPTIONS_Y = 380;
+    private static final double OPTION_SPACING = 70;
+
+    // Voile sombre sur la partie figée, plus léger pendant le compte à rebours
+    // pour que le joueur voie où il en est avant de reprendre
+<span class="fc" id="L33">    private static final Color MENU_VEIL = Color.rgb(0, 0, 0, 0.6);</span>
+<span class="fc" id="L34">    private static final Color COUNTDOWN_VEIL = Color.rgb(0, 0, 0, 0.3);</span>
+<span class="fc" id="L35">    private static final Color SELECTED = Color.GOLD;</span>
+<span class="fc" id="L36">    private static final Color NOT_SELECTED = Color.LIGHTGRAY;</span>
+
+    private final Game game;
+    private final KeyboardInput input;
+    private final PlayState play;
+<span class="fc" id="L41">    private int selected = RESUME;</span>
+    private boolean countingDown;
+    private double remaining;
+
+    // Chargées au premier affichage, comme dans MenuState, pour que les tests tournent sans fenêtre
+    private Font titleFont;
+    private Font optionFont;
+    private Font countdownFont;
+
+    /**
+     * Crée l'écran de pause.
+     *
+     * @param game  le jeu, pour reprendre la partie ou revenir au menu
+     * @param input le clavier
+     * @param play  la partie figée, affichée en fond et reprise telle quelle
+     */
+<span class="fc" id="L57">    public PauseState(Game game, KeyboardInput input, PlayState play) {</span>
+<span class="fc" id="L58">        this.game = game;</span>
+<span class="fc" id="L59">        this.input = input;</span>
+<span class="fc" id="L60">        this.play = play;</span>
+<span class="fc" id="L61">    }</span>
+
+    private void loadFonts() {
+<span class="nc" id="L64">        titleFont = Assets.font(72);</span>
+<span class="nc" id="L65">        optionFont = Assets.font(32);</span>
+<span class="nc" id="L66">        countdownFont = Assets.font(160);</span>
+<span class="nc" id="L67">    }</span>
+
+    @Override
+    public void update(double dt) {
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        if (countingDown) {</span>
+<span class="fc" id="L72">            updateCountdown(dt);</span>
+        } else {
+<span class="fc" id="L74">            updateMenu();</span>
+        }
+<span class="fc" id="L76">    }</span>
+
+    private void updateMenu() {
+<span class="pc bpc" id="L79" title="1 of 4 branches missed.">        if (input.wasPressed(KeyCode.UP) || input.wasPressed(KeyCode.LEFT)) {</span>
+<span class="fc" id="L80">            selected = (selected + OPTIONS.length - 1) % OPTIONS.length;</span>
+        }
+<span class="pc bpc" id="L82" title="1 of 4 branches missed.">        if (input.wasPressed(KeyCode.DOWN) || input.wasPressed(KeyCode.RIGHT)) {</span>
+<span class="fc" id="L83">            selected = (selected + 1) % OPTIONS.length;</span>
+        }
+        // Échap une seconde fois : même effet que « Reprendre »
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        if (input.wasPressed(KeyCode.ESCAPE)) {</span>
+<span class="fc" id="L87">            startCountdown();</span>
+<span class="pc bpc" id="L88" title="1 of 4 branches missed.">        } else if (input.wasPressed(KeyCode.SPACE) || input.wasPressed(KeyCode.ENTER)) {</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">            if (selected == RESUME) {</span>
+<span class="fc" id="L90">                startCountdown();</span>
+            } else {
+<span class="fc" id="L92">                game.backToMenu();</span>
+            }
+        }
+<span class="fc" id="L95">    }</span>
+
+    private void startCountdown() {
+<span class="fc" id="L98">        countingDown = true;</span>
+<span class="fc" id="L99">        remaining = COUNTDOWN_DURATION;</span>
+<span class="fc" id="L100">    }</span>
+
+    private void updateCountdown(double dt) {
+        // Échap pendant le compte à rebours : le joueur n'est pas prêt, retour au menu de pause
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (input.wasPressed(KeyCode.ESCAPE)) {</span>
+<span class="fc" id="L105">            countingDown = false;</span>
+<span class="fc" id="L106">            return;</span>
+        }
+<span class="fc" id="L108">        remaining -= dt;</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        if (remaining &lt;= 0) {</span>
+<span class="fc" id="L110">            game.resume(play);</span>
+        }
+<span class="fc" id="L112">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (titleFont == null) {</span>
+<span class="nc" id="L117">            loadFonts();</span>
+        }
+        // La partie reste affichée en fond, figée à l'instant de la pause
+<span class="nc" id="L120">        play.render(gc);</span>
+
+<span class="nc" id="L122">        gc.save();</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        gc.setFill(countingDown ? COUNTDOWN_VEIL : MENU_VEIL);</span>
+<span class="nc" id="L124">        gc.fillRect(0, 0, App.WIDTH, App.HEIGHT);</span>
+<span class="nc" id="L125">        gc.setTextAlign(TextAlignment.CENTER);</span>
+<span class="nc" id="L126">        gc.setTextBaseline(VPos.CENTER);</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (countingDown) {</span>
+<span class="nc" id="L128">            renderCountdown(gc);</span>
+        } else {
+<span class="nc" id="L130">            renderMenu(gc);</span>
+        }
+<span class="nc" id="L132">        gc.restore();</span>
+<span class="nc" id="L133">    }</span>
+
+    private void renderMenu(GraphicsContext gc) {
+<span class="nc" id="L136">        double centerX = App.WIDTH / 2.0;</span>
+<span class="nc" id="L137">        gc.setFont(titleFont);</span>
+<span class="nc" id="L138">        gc.setFill(Color.WHITE);</span>
+<span class="nc" id="L139">        gc.fillText(&quot;PAUSE&quot;, centerX, TITLE_Y);</span>
+
+        // Options de la pause, celle sélectionnée en doré
+<span class="nc" id="L142">        gc.setFont(optionFont);</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        for (int i = 0; i &lt; OPTIONS.length; i++) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">            gc.setFill(i == selected ? SELECTED : NOT_SELECTED);</span>
+<span class="nc" id="L145">            gc.fillText(OPTIONS[i], centerX, OPTIONS_Y + i * OPTION_SPACING);</span>
+        }
+<span class="nc" id="L147">    }</span>
+
+    private void renderCountdown(GraphicsContext gc) {
+        // 3, 2, 1 : chaque chiffre reste affiché une seconde
+<span class="nc" id="L151">        String seconds = String.valueOf((int) Math.ceil(remaining));</span>
+<span class="nc" id="L152">        double centerX = App.WIDTH / 2.0;</span>
+<span class="nc" id="L153">        double centerY = App.HEIGHT / 2.0;</span>
+<span class="nc" id="L154">        gc.setFont(countdownFont);</span>
+        // Contour noir pour que le chiffre reste lisible sur le ciel clair
+<span class="nc" id="L156">        gc.setStroke(Color.BLACK);</span>
+<span class="nc" id="L157">        gc.setLineWidth(8);</span>
+<span class="nc" id="L158">        gc.strokeText(seconds, centerX, centerY);</span>
+<span class="nc" id="L159">        gc.setFill(SELECTED);</span>
+<span class="nc" id="L160">        gc.fillText(seconds, centerX, centerY);</span>
+<span class="nc" id="L161">    }</span>
+
+    int getSelected() {
+<span class="fc" id="L164">        return selected;</span>
+    }
+
+    boolean isCountingDown() {
+<span class="fc" id="L168">        return countingDown;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

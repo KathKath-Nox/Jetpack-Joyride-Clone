@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Chunk.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Chunk.java</span></div><h1>Chunk.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeSet;
+
+/**
+ * Tronçon préfabriqué : un groupe d'obstacles rectangulaires placés les uns par rapport aux autres.
+ *
+ * &lt;p&gt;Un tronçon doit toujours pouvoir se traverser : {@link #isPassable()} le vérifie, et
+ * {@link LevelGenerator} refuse les tronçons qui échouent.
+ */
+public class Chunk {
+
+    /** Un rectangle du tronçon, en pixels, relatif au bord gauche du tronçon. */
+<span class="fc" id="L16">    public record Rect(double x, double y, double width, double height) {</span>
+    }
+
+    /** Haut de la zone de jeu. */
+    static final double PLAY_TOP = 0;
+    /** Bas de la zone de jeu (le sol). */
+    static final double PLAY_BOTTOM = App.HEIGHT - Decor.FLOOR_HEIGHT;
+    /** Hauteur libre minimale pour passer : le joueur (60 px) plus une marge. */
+    static final double MIN_GAP = 100;
+
+    private final String name;
+    private final double width;
+    private final List&lt;Rect&gt; rects;
+
+    /**
+     * @param name  nom du tronçon, pour les messages d'erreur
+     * @param width largeur du tronçon
+     * @param rects les rectangles, qui doivent tenir dans la largeur du tronçon
+     */
+<span class="fc" id="L35">    public Chunk(String name, double width, List&lt;Rect&gt; rects) {</span>
+<span class="fc bfc" id="L36" title="All 2 branches covered.">        for (Rect r : rects) {</span>
+<span class="pc bpc" id="L37" title="1 of 4 branches missed.">            if (r.x() &lt; 0 || r.x() + r.width() &gt; width) {</span>
+<span class="fc" id="L38">                throw new IllegalArgumentException(&quot;Rectangle hors du tronçon &quot; + name);</span>
+            }
+<span class="fc" id="L40">        }</span>
+<span class="fc" id="L41">        this.name = name;</span>
+<span class="fc" id="L42">        this.width = width;</span>
+<span class="fc" id="L43">        this.rects = List.copyOf(rects);</span>
+<span class="fc" id="L44">    }</span>
+
+    /**
+     * Donne le nom du tronçon.
+     *
+     * @return le nom du tronçon
+     */
+    public String getName() {
+<span class="fc" id="L52">        return name;</span>
+    }
+
+    /**
+     * Donne la largeur du tronçon.
+     *
+     * @return la largeur, en pixels
+     */
+    public double getWidth() {
+<span class="fc" id="L61">        return width;</span>
+    }
+
+    /**
+     * Donne les rectangles qui composent le tronçon.
+     *
+     * @return la liste des rectangles, non modifiable
+     */
+    public List&lt;Rect&gt; getRects() {
+<span class="nc" id="L70">        return rects;</span>
+    }
+
+    /**
+     * Crée les obstacles du tronçon.
+     *
+     * @param originX position du bord gauche du tronçon
+     * @param speed   vitesse de défilement du jeu
+     * @return les obstacles, prêts à être ajoutés à la partie
+     */
+    public List&lt;Obstacle&gt; spawn(double originX, GameSpeed speed) {
+<span class="fc" id="L81">        List&lt;Obstacle&gt; obstacles = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        for (Rect r : rects) {</span>
+<span class="fc" id="L83">            obstacles.add(new DummyObstacle(originX + r.x(), r.y(), r.width(), r.height(), speed));</span>
+<span class="fc" id="L84">        }</span>
+<span class="fc" id="L85">        return obstacles;</span>
+    }
+
+    /**
+     * Vérifie qu'un chemin traverse le tronçon de bout en bout.
+     *
+     * &lt;p&gt;Le tronçon est découpé en tranches verticales. Dans chaque tranche on cherche les
+     * passages libres d'au moins {@link #MIN_GAP} de haut ; on passe d'une tranche à la
+     * suivante par un passage qui recoupe, sur au moins {@link #MIN_GAP}, un passage déjà atteint.
+     *
+     * @return {@code true} si le joueur peut traverser le tronçon
+     */
+    public boolean isPassable() {
+<span class="fc" id="L98">        TreeSet&lt;Double&gt; cuts = new TreeSet&lt;&gt;();</span>
+<span class="fc" id="L99">        cuts.add(0.0);</span>
+<span class="fc" id="L100">        cuts.add(width);</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">        for (Rect r : rects) {</span>
+<span class="fc" id="L102">            cuts.add(r.x());</span>
+<span class="fc" id="L103">            cuts.add(r.x() + r.width());</span>
+<span class="fc" id="L104">        }</span>
+<span class="fc" id="L105">        List&lt;double[]&gt; reachable = null;</span>
+<span class="fc" id="L106">        Double from = null;</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">        for (double cut : cuts) {</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">            if (from != null) {</span>
+<span class="fc" id="L109">                List&lt;double[]&gt; gaps = freeGaps(from, cut);</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">                if (reachable != null) {</span>
+<span class="fc" id="L111">                    gaps = connected(gaps, reachable);</span>
+                }
+<span class="fc bfc" id="L113" title="All 2 branches covered.">                if (gaps.isEmpty()) {</span>
+<span class="fc" id="L114">                    return false;</span>
+                }
+<span class="fc" id="L116">                reachable = gaps;</span>
+            }
+<span class="fc" id="L118">            from = cut;</span>
+<span class="fc" id="L119">        }</span>
+<span class="fc" id="L120">        return true;</span>
+    }
+
+    private List&lt;double[]&gt; freeGaps(double left, double right) {
+<span class="fc" id="L124">        List&lt;double[]&gt; blocked = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">        for (Rect r : rects) {</span>
+<span class="fc bfc" id="L126" title="All 4 branches covered.">            if (r.x() &lt; right &amp;&amp; r.x() + r.width() &gt; left) {</span>
+<span class="fc" id="L127">                blocked.add(new double[] {r.y(), r.y() + r.height()});</span>
+            }
+<span class="fc" id="L129">        }</span>
+<span class="fc" id="L130">        blocked.sort((a, b) -&gt; Double.compare(a[0], b[0]));</span>
+<span class="fc" id="L131">        List&lt;double[]&gt; gaps = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L132">        double cursor = PLAY_TOP;</span>
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        for (double[] b : blocked) {</span>
+<span class="fc" id="L134">            addGap(gaps, cursor, b[0]);</span>
+<span class="fc" id="L135">            cursor = Math.max(cursor, b[1]);</span>
+<span class="fc" id="L136">        }</span>
+<span class="fc" id="L137">        addGap(gaps, cursor, PLAY_BOTTOM);</span>
+<span class="fc" id="L138">        return gaps;</span>
+    }
+
+    private static void addGap(List&lt;double[]&gt; gaps, double top, double bottom) {
+<span class="fc bfc" id="L142" title="All 2 branches covered.">        if (bottom - top &gt;= MIN_GAP) {</span>
+<span class="fc" id="L143">            gaps.add(new double[] {top, bottom});</span>
+        }
+<span class="fc" id="L145">    }</span>
+
+    private static List&lt;double[]&gt; connected(List&lt;double[]&gt; gaps, List&lt;double[]&gt; reachable) {
+<span class="fc" id="L148">        List&lt;double[]&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L149" title="All 2 branches covered.">        for (double[] g : gaps) {</span>
+<span class="fc bfc" id="L150" title="All 2 branches covered.">            for (double[] r : reachable) {</span>
+<span class="fc" id="L151">                double overlap = Math.min(g[1], r[1]) - Math.max(g[0], r[0]);</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">                if (overlap &gt;= MIN_GAP) {</span>
+<span class="fc" id="L153">                    result.add(g);</span>
+<span class="fc" id="L154">                    break;</span>
+                }
+<span class="fc" id="L156">            }</span>
+<span class="fc" id="L157">        }</span>
+<span class="fc" id="L158">        return result;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L163">        return name;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

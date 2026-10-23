@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CharacterChoice.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">CharacterChoice.java</span></div><h1>CharacterChoice.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+/**
+ * Skin choisi pour le personnage. Il est gardé par {@link Game}, donc il reste le même d'une
+ * partie à l'autre pendant la session.
+ */
+<span class="fc" id="L7">public class CharacterChoice {</span>
+
+<span class="fc" id="L9">    private static final String[] NAMES = {&quot;BLEU&quot;, &quot;ROUGE&quot;, &quot;VERT&quot;, &quot;ROSE&quot;, &quot;ROI&quot;};</span>
+<span class="fc" id="L10">    private static final String[] SHEETS = {</span>
+        &quot;/assets/player_sprite_sheet.png&quot;,
+        &quot;/assets/player_sprite_sheet_red.png&quot;,
+        &quot;/assets/player_sprite_sheet_green.png&quot;,
+        &quot;/assets/player_sprite_sheet_pink.png&quot;,
+        &quot;/assets/player_sprite_sheet_king.png&quot;
+    };
+
+    private int index;
+
+    /**
+     * Passe au skin suivant, en revenant au premier après le dernier.
+     */
+    public void next() {
+<span class="fc" id="L24">        index = (index + 1) % NAMES.length;</span>
+<span class="fc" id="L25">    }</span>
+
+    /**
+     * Passe au skin précédent, en revenant au dernier avant le premier.
+     */
+    public void previous() {
+<span class="fc" id="L31">        index = (index + NAMES.length - 1) % NAMES.length;</span>
+<span class="fc" id="L32">    }</span>
+
+    /**
+     * Donne le nom du skin courant, tel qu'affiché dans le menu.
+     *
+     * @return le nom de la couleur, en majuscules
+     */
+    public String getName() {
+<span class="fc" id="L40">        return NAMES[index];</span>
+    }
+
+    /**
+     * Donne le chemin de la feuille de sprites du skin courant.
+     *
+     * @return le chemin de la ressource
+     */
+    public String getSheetPath() {
+<span class="fc" id="L49">        return SHEETS[index];</span>
+    }
+
+    /**
+     * Donne le nombre de skins disponibles.
+     *
+     * @return le nombre de skins
+     */
+    public int count() {
+<span class="fc" id="L58">        return NAMES.length;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

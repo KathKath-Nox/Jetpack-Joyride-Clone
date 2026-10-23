@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Riding.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Riding.java</span></div><h1>Riding.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+/**
+ * État du joueur dans le véhicule. Un appui court fait sauter depuis le sol, un appui maintenu plus
+ * de {@code HOLD_DELAY} secondes active le jetpack du véhicule. Un compte à rebours ramène le joueur
+ * en {@link Falling} à la fin.
+ */
+<span class="fc" id="L8">public class Riding implements PlayerState {</span>
+    /** Durée du véhicule, en secondes. */
+    public static final double DURATION = 10;
+    private static final double HOLD_DELAY = 0.2;
+
+<span class="fc" id="L13">    private double timeLeft = DURATION;</span>
+    private double held;
+    private boolean thrusting;
+
+    /**
+     * Gère le saut ou le vol du véhicule selon la durée d'appui, puis fait avancer le compte à
+     * rebours. Passe en {@link Falling} quand le temps est écoulé.
+     *
+     * @param player le joueur à mettre à jour
+     * @param dt     temps écoulé depuis la dernière image, en secondes
+     */
+    @Override
+    public void update(Player player, double dt) {
+<span class="fc" id="L26">        boolean pressed = player.isThrustPressed();</span>
+<span class="fc bfc" id="L27" title="All 2 branches covered.">        held = pressed ? held + dt : 0;</span>
+<span class="fc bfc" id="L28" title="All 4 branches covered.">        thrusting = pressed &amp;&amp; held &gt; HOLD_DELAY;</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">        if (thrusting) {</span>
+<span class="fc" id="L30">            player.applyPhysics(dt, true);</span>
+        } else {
+<span class="fc bfc" id="L32" title="All 4 branches covered.">            if (pressed &amp;&amp; player.isOnGround()) {</span>
+<span class="fc" id="L33">                player.jump();</span>
+            }
+<span class="fc" id="L35">            player.applyRidingPhysics(dt);</span>
+        }
+<span class="fc" id="L37">        timeLeft -= dt;</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        if (timeLeft &lt;= 0) {</span>
+<span class="fc" id="L39">            player.setState(new Falling());</span>
+        }
+<span class="fc" id="L41">    }</span>
+
+    /**
+     * Donne le temps restant du véhicule.
+     *
+     * @return le temps restant en secondes
+     */
+    public double getTimeLeft() {
+<span class="fc" id="L49">        return timeLeft;</span>
+    }
+
+    /**
+     * Indique si le jetpack du véhicule est actif (appui maintenu assez longtemps).
+     *
+     * @return {@code true} si le véhicule vole
+     */
+    public boolean isThrusting() {
+<span class="fc" id="L58">        return thrusting;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

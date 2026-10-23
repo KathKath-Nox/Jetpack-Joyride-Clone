@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MenuState.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">MenuState.java</span></div><h1>MenuState.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.input.KeyCode;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
+
+/**
+ * MENU PRINCIPAL : écran affiché avant d'entrer dans le jeu.
+ *
+ * &lt;p&gt;Fond : {@code assets/title-bg.png}, qui contient déjà le titre du jeu.
+ * Flèches pour choisir, Espace ou Entrée pour valider, Échap pour quitter.
+ * L'option « Réglages » ouvre l'écran qui permet de changer les touches, l'option « Customiser »
+ * ouvre l'écran de choix du personnage et « Rush » lance le mode démo (partie accélérée avec
+ * tous les obstacles).
+ */
+public class MenuState implements GameState {
+
+    // Options du menu, dans l'ordre d'affichage (de gauche à droite)
+    static final int PLAY = 0;
+    static final int QUIT = 1;
+    static final int SETTINGS = 2;
+    static final int SKIN = 3;
+    static final int RUSH = 4;
+    private static final int OPTION_COUNT = 5;
+
+    // Bandeau des options, en bas de l'écran sous « PRESS SPACE TO BEGIN »
+    private static final double BAR_WIDTH = 1140;
+    private static final double BAR_HEIGHT = 56;
+    private static final double BAR_Y = App.HEIGHT - BAR_HEIGHT - 12;
+    private static final double OPTION_SPACING = 215;
+
+    // QR code de la manette téléphone, en haut à droite
+    private static final double QR_SIZE = 150;
+    private static final double QR_QUIET = 10;
+
+<span class="fc" id="L42">    private static final Color BAR = Color.rgb(0, 0, 0, 0.6);</span>
+<span class="fc" id="L43">    private static final Color SELECTED = Color.GOLD;</span>
+<span class="fc" id="L44">    private static final Color NOT_SELECTED = Color.LIGHTGRAY;</span>
+
+    private final Game game;
+    private final KeyboardInput input;
+<span class="fc" id="L48">    private int selected = PLAY;</span>
+
+    // Chargés au premier affichage et pas dans le constructeur : JavaFX ne peut pas
+    // créer d'Image sans fenêtre ouverte, ce qui casserait les tests du menu
+    private Image background;
+    private Font font;
+    private Font smallFont;
+    private String qrUrl;
+    private boolean[][] qr;
+
+    /**
+     * Crée le menu principal.
+     *
+     * @param game  le jeu, pour lancer une partie ou quitter
+     * @param input le clavier
+     */
+<span class="fc" id="L64">    public MenuState(Game game, KeyboardInput input) {</span>
+<span class="fc" id="L65">        this.game = game;</span>
+<span class="fc" id="L66">        this.input = input;</span>
+<span class="fc" id="L67">    }</span>
+
+    private void loadAssets() {
+<span class="nc" id="L70">        try (InputStream image = Assets.open(&quot;title-bg.png&quot;)) {</span>
+            // Image redimensionnée une seule fois au chargement (1920x1080 -&gt; taille de la fenêtre)
+<span class="nc" id="L72">            background = new Image(image, App.WIDTH, App.HEIGHT, false, true);</span>
+<span class="nc" id="L73">        } catch (IOException e) {</span>
+<span class="nc" id="L74">            throw new UncheckedIOException(e);</span>
+<span class="nc" id="L75">        }</span>
+<span class="nc" id="L76">        font = Assets.font(32);</span>
+<span class="nc" id="L77">        smallFont = Assets.font(18);</span>
+<span class="nc" id="L78">    }</span>
+
+    private void renderPhoneQr(GraphicsContext gc) {
+<span class="nc" id="L81">        String url = game.getPhoneUrl();</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (url == null) {</span>
+<span class="nc" id="L83">            return;</span>
+        }
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (!url.equals(qrUrl)) {</span>
+<span class="nc" id="L86">            qr = QrCode.encode(url);</span>
+<span class="nc" id="L87">            qrUrl = url;</span>
+        }
+<span class="nc" id="L89">        double cell = Math.floor(QR_SIZE / qr.length);</span>
+<span class="nc" id="L90">        double size = cell * qr.length;</span>
+<span class="nc" id="L91">        double x = App.WIDTH - size - QR_QUIET - 20;</span>
+<span class="nc" id="L92">        double y = 20;</span>
+<span class="nc" id="L93">        gc.setFill(Color.WHITE);</span>
+<span class="nc" id="L94">        gc.fillRoundRect(x - QR_QUIET, y - QR_QUIET, size + 2 * QR_QUIET, size + 2 * QR_QUIET, 12, 12);</span>
+<span class="nc" id="L95">        gc.setFill(Color.BLACK);</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        for (int row = 0; row &lt; qr.length; row++) {</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            for (int col = 0; col &lt; qr.length; col++) {</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">                if (qr[row][col]) {</span>
+<span class="nc" id="L99">                    gc.fillRect(x + col * cell, y + row * cell, cell, cell);</span>
+                }
+            }
+        }
+<span class="nc" id="L103">        gc.setFont(smallFont);</span>
+<span class="nc" id="L104">        gc.setFill(Color.WHITE);</span>
+<span class="nc" id="L105">        gc.setTextAlign(TextAlignment.CENTER);</span>
+<span class="nc" id="L106">        gc.fillText(&quot;JOUE AVEC TON TELEPHONE&quot;, x + size / 2, y + size + QR_QUIET + 26);</span>
+<span class="nc" id="L107">    }</span>
+
+    @Override
+    public void update(double dt) {
+<span class="fc bfc" id="L111" title="All 4 branches covered.">        if (input.wasPressed(KeyCode.LEFT) || input.wasPressed(KeyCode.UP)) {</span>
+<span class="fc" id="L112">            selected = (selected + OPTION_COUNT - 1) % OPTION_COUNT;</span>
+        }
+<span class="fc bfc" id="L114" title="All 4 branches covered.">        if (input.wasPressed(KeyCode.RIGHT) || input.wasPressed(KeyCode.DOWN)) {</span>
+<span class="fc" id="L115">            selected = (selected + 1) % OPTION_COUNT;</span>
+        }
+<span class="fc bfc" id="L117" title="All 2 branches covered.">        if (input.wasPressed(KeyCode.ESCAPE)) {</span>
+<span class="fc" id="L118">            game.quit();</span>
+<span class="fc bfc" id="L119" title="All 4 branches covered.">        } else if (input.wasPressed(KeyCode.SPACE) || input.wasPressed(KeyCode.ENTER)) {</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">            if (selected == PLAY) {</span>
+<span class="fc" id="L121">                game.startNewGame();</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">            } else if (selected == SETTINGS) {</span>
+<span class="fc" id="L123">                game.showControls();</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">            } else if (selected == SKIN) {</span>
+<span class="fc" id="L125">                game.showCustomize();</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">            } else if (selected == RUSH) {</span>
+<span class="fc" id="L127">                game.startRushGame();</span>
+            } else {
+<span class="fc" id="L129">                game.quit();</span>
+            }
+        }
+<span class="fc" id="L132">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        if (background == null) {</span>
+<span class="nc" id="L137">            loadAssets();</span>
+        }
+<span class="nc" id="L139">        gc.save();</span>
+<span class="nc" id="L140">        gc.drawImage(background, 0, 0);</span>
+
+        // Bandeau semi-transparent pour que les options restent lisibles sur l'image
+<span class="nc" id="L143">        double centerX = App.WIDTH / 2.0;</span>
+<span class="nc" id="L144">        gc.setFill(BAR);</span>
+<span class="nc" id="L145">        gc.fillRoundRect(centerX - BAR_WIDTH / 2, BAR_Y, BAR_WIDTH, BAR_HEIGHT, 28, 28);</span>
+
+        // Options du menu, celle sélectionnée en doré
+        // (pas de flèches « &gt; &lt; » : la police du jeu n'a pas ces caractères)
+<span class="nc" id="L149">        gc.setFont(font);</span>
+<span class="nc" id="L150">        gc.setTextAlign(TextAlignment.CENTER);</span>
+<span class="nc" id="L151">        double textY = BAR_Y + BAR_HEIGHT / 2 + 11;</span>
+<span class="nc" id="L152">        String[] labels = {&quot;JOUER&quot;, &quot;QUITTER&quot;, &quot;REGLAGES&quot;, &quot;CUSTOMISER&quot;, &quot;RUSH&quot;};</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        for (int i = 0; i &lt; OPTION_COUNT; i++) {</span>
+<span class="nc" id="L154">            double x = centerX + (i - (OPTION_COUNT - 1) / 2.0) * OPTION_SPACING;</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">            gc.setFill(i == selected ? SELECTED : NOT_SELECTED);</span>
+<span class="nc" id="L156">            gc.fillText(labels[i], x, textY);</span>
+        }
+<span class="nc" id="L158">        renderPhoneQr(gc);</span>
+<span class="nc" id="L159">        gc.restore();</span>
+<span class="nc" id="L160">    }</span>
+
+    int getSelected() {
+<span class="fc" id="L163">        return selected;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

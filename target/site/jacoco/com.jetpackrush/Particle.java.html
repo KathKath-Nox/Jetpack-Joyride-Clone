@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Particle.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Particle.java</span></div><h1>Particle.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
+
+/**
+ * Petite particule : un débris carré qui tourne, ou un rond qui grossit ou rétrécit. Elle a une
+ * vitesse, une gravité et une durée de vie, et devient transparente en vieillissant.
+ */
+public class Particle {
+    private double x;
+    private double y;
+    private double vx;
+    private double vy;
+    private double angle;
+    private double age;
+    private final double gravity;
+    private final double size;
+    private final double growth;
+    private final double spin;
+    private final double lifetime;
+    private final Color color;
+    private final boolean debris;
+
+    /**
+     * Crée une particule.
+     *
+     * @param x        position horizontale initiale
+     * @param y        position verticale initiale
+     * @param vx       vitesse horizontale, en pixels par seconde
+     * @param vy       vitesse verticale, en pixels par seconde
+     * @param gravity  accélération verticale, en pixels par seconde au carré
+     * @param size     taille initiale, en pixels
+     * @param growth   variation de la taille par seconde (négative pour rétrécir)
+     * @param spin     vitesse de rotation, en radians par seconde (débris seulement)
+     * @param lifetime durée de vie, en secondes
+     * @param color    couleur de la particule
+     * @param debris   {@code true} pour un carré qui tourne, {@code false} pour un rond
+     */
+    public Particle(double x, double y, double vx, double vy, double gravity,
+                    double size, double growth, double spin, double lifetime,
+<span class="fc" id="L42">                    Color color, boolean debris) {</span>
+<span class="fc" id="L43">        this.x = x;</span>
+<span class="fc" id="L44">        this.y = y;</span>
+<span class="fc" id="L45">        this.vx = vx;</span>
+<span class="fc" id="L46">        this.vy = vy;</span>
+<span class="fc" id="L47">        this.gravity = gravity;</span>
+<span class="fc" id="L48">        this.size = size;</span>
+<span class="fc" id="L49">        this.growth = growth;</span>
+<span class="fc" id="L50">        this.spin = spin;</span>
+<span class="fc" id="L51">        this.lifetime = lifetime;</span>
+<span class="fc" id="L52">        this.color = color;</span>
+<span class="fc" id="L53">        this.debris = debris;</span>
+<span class="fc" id="L54">    }</span>
+
+    /**
+     * Fait vieillir la particule et la déplace.
+     *
+     * @param dt temps écoulé depuis la dernière image, en secondes
+     */
+    public void update(double dt) {
+<span class="fc" id="L62">        age += dt;</span>
+<span class="fc" id="L63">        vy += gravity * dt;</span>
+<span class="fc" id="L64">        x += vx * dt;</span>
+<span class="fc" id="L65">        y += vy * dt;</span>
+<span class="fc" id="L66">        angle += spin * dt;</span>
+<span class="fc" id="L67">    }</span>
+
+    /**
+     * Indique si la particule a encore de la vie.
+     *
+     * @return {@code true} tant que son âge est inférieur à sa durée de vie
+     */
+    public boolean isAlive() {
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        return age &lt; lifetime;</span>
+    }
+
+    /**
+     * Donne l'opacité de la particule, qui diminue avec l'âge.
+     *
+     * @return une valeur entre 1 (neuve) et 0 (fin de vie)
+     */
+    public double getAlpha() {
+<span class="fc" id="L84">        return Math.max(0, 1 - age / lifetime);</span>
+    }
+
+    /**
+     * Donne la position horizontale.
+     *
+     * @return la position horizontale en pixels
+     */
+    public double getX() {
+<span class="nc" id="L93">        return x;</span>
+    }
+
+    /**
+     * Donne la position verticale.
+     *
+     * @return la position verticale en pixels
+     */
+    public double getY() {
+<span class="fc" id="L102">        return y;</span>
+    }
+
+    /**
+     * Dessine la particule avec son opacité courante.
+     *
+     * @param gc contexte graphique du canvas
+     */
+    public void render(GraphicsContext gc) {
+<span class="nc" id="L111">        double s = Math.max(0, size + growth * age);</span>
+<span class="nc" id="L112">        gc.save();</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        gc.setGlobalAlpha(debris ? getAlpha() : getAlpha() * 0.8);</span>
+<span class="nc" id="L114">        gc.setFill(color);</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        if (debris) {</span>
+<span class="nc" id="L116">            gc.translate(x, y);</span>
+<span class="nc" id="L117">            gc.rotate(Math.toDegrees(angle));</span>
+<span class="nc" id="L118">            gc.fillRect(-s / 2, -s / 2, s, s);</span>
+        } else {
+<span class="nc" id="L120">            gc.fillOval(x - s / 2, y - s / 2, s, s);</span>
+        }
+<span class="nc" id="L122">        gc.restore();</span>
+<span class="nc" id="L123">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

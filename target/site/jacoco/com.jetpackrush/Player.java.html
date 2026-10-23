@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Player.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Player.java</span></div><h1>Player.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
+
+/**
+ * Le joueur. Il gère sa physique verticale (gravité, poussée du jetpack, saut du véhicule), son état
+ * courant (pattern State), son bouclier et ses effets visuels. Il lit ses commandes uniquement via
+ * une {@link InputSource}.
+ */
+public class Player extends Entity {
+    /** Hauteur du sol en pixels, mesurée depuis le bas de l'écran. */
+    public static final double GROUND_HEIGHT = 80;   // hauteur du sol en pixels, mesurée depuis le bas de l'écran
+
+    private static final double GRAVITY = 1400;      // accélération vers le bas, en px/s², qui fait retomber le joueur
+    private static final double THRUST = 2800;       // accélération vers le haut du jetpack quand Espace est enfoncé, en px/s²
+    private static final double MAX_SPEED = 500;     // vitesse verticale maximale (haut et bas), en px/s
+    private static final double JUMP_SPEED = 850;    // vitesse initiale d'un saut du véhicule, en px/s
+
+    private final InputSource input;
+<span class="fc" id="L22">    private final PlayerSprite sprite = new PlayerSprite();</span>
+<span class="fc" id="L23">    private String skin = PlayerSprite.PATH;</span>
+<span class="fc" id="L24">    private PlayerState state = new Falling();</span>
+    private double vy;
+    private double animationTime;
+    private boolean shielded;
+<span class="fc" id="L28">    private final ParticleSystem effects = new ParticleSystem();</span>
+    private double smokeTimer;
+    private double flameTimer;
+    private double smokeLeft;
+<span class="fc" id="L32">    private GameEvents events = new GameEvents();</span>
+
+    /**
+     * Crée un joueur de 40 par 60 pixels, qui commence en {@link Falling}.
+     *
+     * @param x     position horizontale initiale
+     * @param y     position verticale initiale
+     * @param input source d'entrée qui fournit la commande de poussée
+     */
+    public Player(double x, double y, InputSource input) {
+<span class="fc" id="L42">        super(x, y, 40, 60);</span>
+<span class="fc" id="L43">        this.input = input;</span>
+<span class="fc" id="L44">    }</span>
+
+    /**
+     * Choisit où le joueur publie ses événements (protection perdue, choc mortel).
+     *
+     * @param events le sujet auquel s'abonnent les observateurs de la partie
+     */
+    public void setEvents(GameEvents events) {
+<span class="fc" id="L52">        this.events = events;</span>
+<span class="fc" id="L53">    }</span>
+
+    /**
+     * Met à jour le joueur pour une image : fait avancer l'animation, délègue à l'état courant puis
+     * met à jour les effets visuels.
+     *
+     * @param dt temps écoulé depuis la dernière image, en secondes
+     */
+    @Override
+    public void update(double dt) {
+<span class="fc" id="L63">        animationTime += dt;</span>
+<span class="fc" id="L64">        state.update(this, dt);</span>
+<span class="fc" id="L65">        updateEffects(dt);</span>
+<span class="fc" id="L66">    }</span>
+
+    /**
+     * Applique la physique du jetpack : la gravité, moins la poussée si elle est demandée.
+     *
+     * @param dt        temps écoulé depuis la dernière image, en secondes
+     * @param thrusting {@code true} si le jetpack pousse
+     */
+    void applyPhysics(double dt, boolean thrusting) {
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        step(dt, GRAVITY - (thrusting ? THRUST : 0), MAX_SPEED);</span>
+<span class="fc" id="L76">    }</span>
+
+    /**
+     * Applique la physique du véhicule qui court ou saute : la gravité seule, avec la vitesse de saut
+     * comme vitesse maximale.
+     *
+     * @param dt temps écoulé depuis la dernière image, en secondes
+     */
+    void applyRidingPhysics(double dt) {
+<span class="fc" id="L85">        step(dt, GRAVITY, JUMP_SPEED);</span>
+<span class="fc" id="L86">    }</span>
+
+    private void step(double dt, double acceleration, double maxSpeed) {
+<span class="fc" id="L89">        vy = Math.max(-maxSpeed, Math.min(maxSpeed, vy + acceleration * dt));</span>
+<span class="fc" id="L90">        y += vy * dt;</span>
+
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (y &lt; 0) {</span>
+<span class="fc" id="L93">            y = 0;</span>
+<span class="fc" id="L94">            vy = 0;</span>
+        }
+<span class="fc" id="L96">        double maxY = groundY();</span>
+<span class="fc bfc" id="L97" title="All 2 branches covered.">        if (y &gt; maxY) {</span>
+<span class="fc" id="L98">            y = maxY;</span>
+<span class="fc" id="L99">            vy = 0;</span>
+        }
+<span class="fc" id="L101">    }</span>
+
+    private double groundY() {
+<span class="fc" id="L104">        return App.HEIGHT - GROUND_HEIGHT - height;</span>
+    }
+
+    /**
+     * Indique si le joueur touche le sol.
+     *
+     * @return {@code true} s'il est au sol
+     */
+    boolean isOnGround() {
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        return y &gt;= groundY();</span>
+    }
+
+    /**
+     * Lance un saut : donne au joueur une vitesse initiale vers le haut.
+     */
+    void jump() {
+<span class="fc" id="L120">        vy = -JUMP_SPEED;</span>
+<span class="fc" id="L121">    }</span>
+
+    /**
+     * Indique si la poussée est demandée par la source d'entrée.
+     *
+     * @return {@code true} tant que la touche de poussée est maintenue
+     */
+    boolean isThrustPressed() {
+<span class="fc" id="L129">        return input.isThrustPressed();</span>
+    }
+
+    /**
+     * Change l'état courant du joueur.
+     *
+     * @param state le nouvel état
+     */
+    void setState(PlayerState state) {
+<span class="fc" id="L138">        this.state = state;</span>
+<span class="fc" id="L139">    }</span>
+
+    /**
+     * Donne l'état courant du joueur.
+     *
+     * @return l'état courant
+     */
+    public PlayerState getState() {
+<span class="fc" id="L147">        return state;</span>
+    }
+
+    /**
+     * Applique un choc mortel. Dans l'ordre : le véhicule est détruit et le joueur survit, sinon le
+     * bouclier est consommé, sinon le joueur meurt. Les obstacles appellent cette méthode, jamais
+     * {@link #die()} directement.
+     */
+    public void hit() {
+<span class="fc bfc" id="L156" title="All 2 branches covered.">        if (state instanceof Riding) {</span>
+<span class="fc" id="L157">            state = new Falling();</span>
+<span class="fc" id="L158">            effects.burst(centerX(), centerY(), 22);</span>
+<span class="fc" id="L159">            effects.explosion(centerX(), centerY());</span>
+<span class="fc" id="L160">            effects.cloud(centerX(), centerY(), 16);</span>
+<span class="fc" id="L161">            smokeLeft = 1.2;</span>
+<span class="fc" id="L162">            events.publish(GameEvent.PROTECTION_LOST);</span>
+<span class="fc" id="L163">            return;</span>
+        }
+<span class="fc bfc" id="L165" title="All 2 branches covered.">        if (shielded) {</span>
+<span class="fc" id="L166">            shielded = false;</span>
+<span class="fc" id="L167">            events.publish(GameEvent.PROTECTION_LOST);</span>
+<span class="fc" id="L168">            return;</span>
+        }
+<span class="fc" id="L170">        die();</span>
+<span class="fc" id="L171">    }</span>
+
+    /**
+     * Fait mourir le joueur et lance l'effet de fumée. Ne fait rien s'il est déjà mort.
+     */
+    public void die() {
+<span class="fc bfc" id="L177" title="All 2 branches covered.">        if (isDead()) {</span>
+<span class="fc" id="L178">            return;</span>
+        }
+<span class="fc" id="L180">        state = new Dead();</span>
+<span class="fc" id="L181">        effects.cloud(centerX(), centerY(), 10);</span>
+<span class="fc" id="L182">        smokeLeft = 2.0;</span>
+<span class="fc" id="L183">        events.publish(GameEvent.PLAYER_SHOCKED);</span>
+<span class="fc" id="L184">    }</span>
+
+    /**
+     * Lance l'effet d'entrée en jeu : explosion, débris et fumée, comme si le personnage cassait un
+     * mur. Appelée au lancement et au redémarrage.
+     */
+    public void enter() {
+<span class="fc" id="L191">        effects.explosion(centerX(), centerY());</span>
+<span class="fc" id="L192">        effects.burst(centerX(), centerY(), 18);</span>
+<span class="fc" id="L193">        effects.cloud(centerX(), centerY(), 12);</span>
+<span class="fc" id="L194">        smokeLeft = 0.8;</span>
+<span class="fc" id="L195">    }</span>
+
+    private void updateEffects(double dt) {
+<span class="fc bfc" id="L198" title="All 2 branches covered.">        if (smokeLeft &gt; 0) {</span>
+<span class="fc" id="L199">            smokeLeft -= dt;</span>
+<span class="fc" id="L200">            smokeTimer += dt;</span>
+<span class="fc bfc" id="L201" title="All 2 branches covered.">            if (smokeTimer &gt;= 0.03) {</span>
+<span class="fc" id="L202">                smokeTimer = 0;</span>
+<span class="fc" id="L203">                effects.smoke(centerX(), centerY());</span>
+            }
+        }
+<span class="fc bfc" id="L206" title="All 2 branches covered.">        if (getState() instanceof Flying) {</span>
+<span class="fc" id="L207">            flameTimer += dt;</span>
+<span class="fc bfc" id="L208" title="All 2 branches covered.">            while (flameTimer &gt;= 0.02) {</span>
+<span class="fc" id="L209">                flameTimer -= 0.02;</span>
+<span class="fc" id="L210">                effects.jet(centerX() - 12, centerY() + 24);</span>
+            }
+        } else {
+<span class="fc" id="L213">            flameTimer = 0;</span>
+        }
+<span class="fc" id="L215">        effects.update(dt);</span>
+<span class="fc" id="L216">    }</span>
+
+    private double centerX() {
+<span class="fc" id="L219">        return x + width / 2;</span>
+    }
+
+    private double centerY() {
+<span class="fc" id="L223">        return y + height / 2;</span>
+    }
+
+    /**
+     * Donne le nombre d'effets visuels actifs.
+     *
+     * @return le nombre d'effets en cours
+     */
+    int effectCount() {
+<span class="fc" id="L232">        return effects.size();</span>
+    }
+
+    /**
+     * Indique si le joueur est mort.
+     *
+     * @return {@code true} s'il est dans l'état {@link Dead}
+     */
+    public boolean isDead() {
+<span class="fc" id="L241">        return state instanceof Dead;</span>
+    }
+
+    /**
+     * Donne un bouclier au joueur.
+     */
+    public void giveShield() {
+<span class="fc" id="L248">        shielded = true;</span>
+<span class="fc" id="L249">    }</span>
+
+    /**
+     * Retire le bouclier du joueur.
+     */
+    public void removeShield() {
+<span class="fc" id="L255">        shielded = false;</span>
+<span class="fc" id="L256">    }</span>
+
+    /**
+     * Indique si le joueur a un bouclier.
+     *
+     * @return {@code true} s'il est protégé
+     */
+    public boolean hasShield() {
+<span class="fc" id="L264">        return shielded;</span>
+    }
+
+    /**
+     * Donne la vitesse verticale du joueur.
+     *
+     * @return la vitesse verticale en pixels par seconde, négative vers le haut
+     */
+    public double getVelocityY() {
+<span class="fc" id="L273">        return vy;</span>
+    }
+
+    private void renderVehicle(GraphicsContext gc) {
+<span class="nc" id="L277">        String name = &quot;vehicle_ground2&quot;;</span>
+<span class="nc bnc" id="L278" title="All 4 branches missed.">        if (state instanceof Riding &amp;&amp; ((Riding) state).isThrusting()) {</span>
+<span class="nc" id="L279">            name = &quot;vehicle_rising&quot;;</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">        } else if (isOnGround()) {</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">            name = (int) (animationTime * 8) % 2 == 0 ? &quot;vehicle_ground&quot; : &quot;vehicle_ground2&quot;;</span>
+        }
+<span class="nc" id="L283">        Image image = AssetImages.get(&quot;/assets/&quot; + name + &quot;.png&quot;);</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">        if (image == null) {</span>
+<span class="nc" id="L285">            gc.setFill(Color.ORANGE);</span>
+<span class="nc" id="L286">            gc.fillRect(x - 15, y + height - 15, width + 30, 25);</span>
+<span class="nc" id="L287">            return;</span>
+        }
+<span class="nc" id="L289">        double w = image.getWidth() * 1.25;</span>
+<span class="nc" id="L290">        double h = image.getHeight() * 1.25;</span>
+<span class="nc" id="L291">        gc.save();</span>
+<span class="nc" id="L292">        gc.setImageSmoothing(false);</span>
+<span class="nc" id="L293">        gc.drawImage(image, x + width / 2 - w / 2, y + height - h + 8, w, h);</span>
+<span class="nc" id="L294">        gc.restore();</span>
+<span class="nc" id="L295">    }</span>
+
+    private void renderShield(GraphicsContext gc) {
+<span class="nc" id="L298">        Image image = AssetImages.get(&quot;/assets/shield_bubble.png&quot;);</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">        if (image == null) {</span>
+<span class="nc" id="L300">            gc.setStroke(Color.CYAN);</span>
+<span class="nc" id="L301">            gc.setLineWidth(3);</span>
+<span class="nc" id="L302">            gc.strokeOval(x - 10, y - 10, width + 20, height + 20);</span>
+<span class="nc" id="L303">            return;</span>
+        }
+<span class="nc" id="L305">        double size = 110;</span>
+<span class="nc" id="L306">        gc.save();</span>
+<span class="nc" id="L307">        gc.setImageSmoothing(false);</span>
+<span class="nc" id="L308">        gc.drawImage(image, x + width / 2 - size / 2, y + height / 2 - size / 2, size, size);</span>
+<span class="nc" id="L309">        gc.restore();</span>
+<span class="nc" id="L310">    }</span>
+
+    /**
+     * Dessine le joueur : son sprite, ou le véhicule s'il roule, puis les effets et la bulle du
+     * bouclier s'il est protégé.
+     *
+     * @param gc contexte graphique du canvas
+     */
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L320" title="All 2 branches missed.">        if (state instanceof Riding) {</span>
+<span class="nc" id="L321">            renderVehicle(gc);</span>
+        } else {
+<span class="nc" id="L323">            sprite.render(gc, skin, state, animationTime, getHitbox());</span>
+        }
+<span class="nc" id="L325">        effects.render(gc);</span>
+<span class="nc bnc" id="L326" title="All 2 branches missed.">        if (shielded) {</span>
+<span class="nc" id="L327">            renderShield(gc);</span>
+        }
+<span class="nc" id="L329">    }</span>
+
+    /**
+     * Change le skin du joueur.
+     *
+     * @param path chemin de la feuille de sprites à utiliser
+     */
+    public void setSkin(String path) {
+<span class="fc" id="L337">        this.skin = path;</span>
+<span class="fc" id="L338">    }</span>
+
+    /**
+     * Donne le skin du joueur.
+     *
+     * @return le chemin de la feuille de sprites utilisée
+     */
+    public String getSkin() {
+<span class="fc" id="L346">        return skin;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

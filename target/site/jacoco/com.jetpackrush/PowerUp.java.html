@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PowerUp.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">PowerUp.java</span></div><h1>PowerUp.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+
+/**
+ * Boîte de power-up ramassable (pattern Strategy). Elle ne connaît pas son effet : elle le délègue
+ * à un {@link PowerUpEffect}, ce qui permet d'ajouter un power-up sans modifier cette classe.
+ */
+public class PowerUp extends Item {
+    private final PowerUpEffect effect;
+
+    /**
+     * Crée un power-up avec une zone de ramassage de 44 par 44 pixels.
+     *
+     * @param x      position horizontale du coin supérieur gauche
+     * @param y      position verticale du coin supérieur gauche
+     * @param speed  vitesse de défilement du jeu
+     * @param effect effet donné au joueur quand il ramasse la boîte
+     */
+    public PowerUp(double x, double y, GameSpeed speed, PowerUpEffect effect) {
+<span class="fc" id="L22">        super(x, y, 44, 44, speed);</span>
+<span class="fc" id="L23">        this.effect = effect;</span>
+<span class="fc" id="L24">    }</span>
+
+    /**
+     * Applique l'effet au joueur et marque la boîte comme ramassée. Ne fait rien si elle l'est déjà.
+     *
+     * @param player le joueur qui touche la boîte
+     */
+    @Override
+    public void onCollision(Player player) {
+<span class="fc bfc" id="L33" title="All 2 branches covered.">        if (isCollected()) {</span>
+<span class="fc" id="L34">            return;</span>
+        }
+<span class="fc" id="L36">        effect.apply(player);</span>
+<span class="fc" id="L37">        collect();</span>
+<span class="fc" id="L38">    }</span>
+
+    /**
+     * Dessine la boîte avec son image, ou un rond de la couleur de l'effet si l'image manque. Ne
+     * dessine rien une fois la boîte ramassée.
+     *
+     * @param gc contexte graphique du canvas
+     */
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L48" title="All 2 branches missed.">        if (isCollected()) {</span>
+<span class="nc" id="L49">            return;</span>
+        }
+<span class="nc" id="L51">        Image image = AssetImages.get(&quot;/assets/powerup_box.png&quot;);</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (image == null) {</span>
+<span class="nc" id="L53">            gc.setFill(effect.getColor());</span>
+<span class="nc" id="L54">            gc.fillOval(x, y, width, height);</span>
+<span class="nc" id="L55">            return;</span>
+        }
+<span class="nc" id="L57">        gc.save();</span>
+<span class="nc" id="L58">        gc.setImageSmoothing(false);</span>
+<span class="nc" id="L59">        gc.drawImage(image, x - 10, y - 10, 64, 64);</span>
+<span class="nc" id="L60">        gc.restore();</span>
+<span class="nc" id="L61">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

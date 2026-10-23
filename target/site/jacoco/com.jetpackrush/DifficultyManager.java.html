@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DifficultyManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">DifficultyManager.java</span></div><h1>DifficultyManager.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+/**
+ * Difficulté progressive : fait monter la vitesse du décor par paliers jusqu'à un plafond.
+ *
+ * &lt;p&gt;Seule classe qui écrit dans {@link GameSpeed} pendant la partie : tout ce qui défile
+ * lit cette vitesse, donc un palier accélère le décor, les obstacles et les items en même temps.
+ */
+public class DifficultyManager {
+
+    /** Vitesse au début de la partie, en pixels par seconde (celle où l'intro s'arrête). */
+    static final double START_SPEED = 220;
+    /** Vitesse ajoutée à chaque palier, en pixels par seconde. */
+    static final double STEP_GAIN = 60;
+    /** Durée d'un palier, en secondes. */
+    static final double STEP_TIME = 15;
+    /** Vitesse maximale, en pixels par seconde. */
+    static final double MAX_SPEED = 520;
+
+    private final GameSpeed speed;
+    private double elapsed;
+
+    /**
+     * @param speed la vitesse partagée que ce gestionnaire fait monter
+     */
+<span class="fc" id="L26">    public DifficultyManager(GameSpeed speed) {</span>
+<span class="fc" id="L27">        this.speed = speed;</span>
+<span class="fc" id="L28">    }</span>
+
+    /**
+     * Vitesse du décor après {@code time} secondes de jeu.
+     *
+     * @param time temps de jeu en secondes (un temps négatif compte comme le début)
+     * @return la vitesse du palier en cours, jamais au-dessus de {@link #MAX_SPEED}
+     */
+    static double speedAt(double time) {
+<span class="fc" id="L37">        double steps = Math.floor(Math.max(0, time) / STEP_TIME);</span>
+<span class="fc" id="L38">        return Math.min(MAX_SPEED, START_SPEED + steps * STEP_GAIN);</span>
+    }
+
+    /**
+     * Avance le temps de jeu et écrit la vitesse du palier en cours dans {@link GameSpeed}.
+     *
+     * @param dt temps écoulé depuis la dernière frame, en secondes
+     */
+    public void update(double dt) {
+<span class="fc" id="L47">        elapsed += dt;</span>
+<span class="fc" id="L48">        speed.setSpeed(speedAt(elapsed));</span>
+<span class="fc" id="L49">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

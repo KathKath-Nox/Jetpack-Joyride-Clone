@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ParticleSystem.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">ParticleSystem.java</span></div><h1>ParticleSystem.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
+
+/**
+ * Gère les effets visuels d'un joueur : des {@link Particle} (débris, flammes) et des
+ * {@link SpriteEffect} (explosion, fumée). Il crée les effets, les met à jour et retire ceux qui
+ * sont terminés.
+ */
+public class ParticleSystem {
+    private static final String SMOKE = &quot;/assets/fx_smoke.png&quot;;
+    private static final String EXPLOSION = &quot;/assets/fx_explosion.png&quot;;
+
+<span class="fc" id="L18">    private final List&lt;Particle&gt; particles = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L19">    private final List&lt;SpriteEffect&gt; sprites = new ArrayList&lt;&gt;();</span>
+    private final Random random;
+
+    /**
+     * Crée un système d'effets avec un générateur aléatoire par défaut.
+     */
+    public ParticleSystem() {
+<span class="fc" id="L26">        this(new Random());</span>
+<span class="fc" id="L27">    }</span>
+
+    /**
+     * Crée un système d'effets avec un générateur aléatoire donné, ce qui rend les tests
+     * reproductibles.
+     *
+     * @param random générateur aléatoire utilisé pour varier les effets
+     */
+<span class="fc" id="L35">    public ParticleSystem(Random random) {</span>
+<span class="fc" id="L36">        this.random = random;</span>
+<span class="fc" id="L37">    }</span>
+
+    private double between(double min, double max) {
+<span class="fc" id="L40">        return min + random.nextDouble() * (max - min);</span>
+    }
+
+    /**
+     * Ajoute une volute de fumée qui monte vers l'arrière.
+     *
+     * @param x position horizontale du centre
+     * @param y position verticale du centre
+     */
+    public void smoke(double x, double y) {
+<span class="fc" id="L50">        sprites.add(new SpriteEffect(SMOKE, x + between(-20, 20), y + between(-20, 20),</span>
+<span class="fc" id="L51">                between(-220, -40), between(-90, -10), between(70, 120), between(6, 9)));</span>
+<span class="fc" id="L52">    }</span>
+
+    /**
+     * Ajoute un gros nuage de fumée, fait de plusieurs volutes.
+     *
+     * @param x     position horizontale du centre
+     * @param y     position verticale du centre
+     * @param count nombre de volutes
+     */
+    public void cloud(double x, double y, int count) {
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        for (int i = 0; i &lt; count; i++) {</span>
+<span class="fc" id="L63">            sprites.add(new SpriteEffect(SMOKE, x + between(-30, 30), y + between(-30, 30),</span>
+<span class="fc" id="L64">                    between(-150, 80), between(-80, -20), between(100, 170), between(4, 7)));</span>
+        }
+<span class="fc" id="L66">    }</span>
+
+    /**
+     * Ajoute une explosion animée.
+     *
+     * @param x position horizontale du centre
+     * @param y position verticale du centre
+     */
+    public void explosion(double x, double y) {
+<span class="fc" id="L75">        sprites.add(new SpriteEffect(EXPLOSION, x, y, 0, 0, 180, 12));</span>
+<span class="fc" id="L76">    }</span>
+
+    /**
+     * Projette des débris dorés et gris vers le haut, qui retombent avec la gravité.
+     *
+     * @param x     position horizontale du point de départ
+     * @param y     position verticale du point de départ
+     * @param count nombre de débris
+     */
+    public void burst(double x, double y, int count) {
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        for (int i = 0; i &lt; count; i++) {</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">            Color color = random.nextBoolean() ? Color.rgb(212, 175, 55) : Color.rgb(60, 60, 60);</span>
+<span class="fc" id="L88">            particles.add(new Particle(x, y,</span>
+<span class="fc" id="L89">                    between(-200, 350), between(-700, -300), 1400,</span>
+<span class="fc" id="L90">                    between(10, 22), 0, between(-12, 12), between(1.2, 2.0),</span>
+                    color, true));
+        }
+<span class="fc" id="L93">    }</span>
+
+    /**
+     * Ajoute le jet du jetpack pour une émission : deux traînées jaunes qui descendent et, une fois
+     * sur trois, une douille orange projetée vers l'arrière.
+     *
+     * @param x position horizontale de la sortie du jetpack
+     * @param y position verticale de la sortie du jetpack
+     */
+    public void jet(double x, double y) {
+<span class="fc bfc" id="L103" title="All 2 branches covered.">        for (int i = 0; i &lt; 2; i++) {</span>
+<span class="fc" id="L104">            particles.add(new Particle(x + between(-6, 6), y,</span>
+<span class="fc" id="L105">                    between(-60, 20), between(380, 560), 0,</span>
+<span class="fc" id="L106">                    between(11, 16), -34, 0, between(0.22, 0.38),</span>
+<span class="fc" id="L107">                    Color.rgb(255, 214, 64), false));</span>
+        }
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        if (random.nextInt(3) == 0) {</span>
+<span class="fc" id="L110">            particles.add(new Particle(x, y,</span>
+<span class="fc" id="L111">                    between(-380, -120), between(-120, 160), 1100,</span>
+<span class="fc" id="L112">                    5, 0, between(-10, 10), between(0.5, 0.8),</span>
+<span class="fc" id="L113">                    Color.rgb(224, 120, 40), true));</span>
+        }
+<span class="fc" id="L115">    }</span>
+
+    /**
+     * Met à jour tous les effets et retire ceux qui sont terminés.
+     *
+     * @param dt temps écoulé depuis la dernière image, en secondes
+     */
+    public void update(double dt) {
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        for (SpriteEffect s : sprites) {</span>
+<span class="fc" id="L124">            s.update(dt);</span>
+<span class="fc" id="L125">        }</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">        for (Particle p : particles) {</span>
+<span class="fc" id="L127">            p.update(dt);</span>
+<span class="fc" id="L128">        }</span>
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        sprites.removeIf(s -&gt; !s.isAlive());</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">        particles.removeIf(p -&gt; !p.isAlive());</span>
+<span class="fc" id="L131">    }</span>
+
+    /**
+     * Dessine tous les effets : les animations d'abord, puis les particules.
+     *
+     * @param gc contexte graphique du canvas
+     */
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        for (SpriteEffect s : sprites) {</span>
+<span class="nc" id="L140">            s.render(gc);</span>
+<span class="nc" id="L141">        }</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        for (Particle p : particles) {</span>
+<span class="nc" id="L143">            p.render(gc);</span>
+<span class="nc" id="L144">        }</span>
+<span class="nc" id="L145">    }</span>
+
+    /**
+     * Donne le nombre d'effets actifs.
+     *
+     * @return le nombre de particules et d'animations en cours
+     */
+    public int size() {
+<span class="fc" id="L153">        return particles.size() + sprites.size();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

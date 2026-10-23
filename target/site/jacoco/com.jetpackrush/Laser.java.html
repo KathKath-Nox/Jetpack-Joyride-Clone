@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Laser.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Jetpack Joyride</a> &gt; <a href="index.source.html" class="el_package">com.jetpackrush</a> &gt; <span class="el_source">Laser.java</span></div><h1>Laser.java</h1><pre class="source lang-java linenums">package com.jetpackrush;
+
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Stop;
+
+/** Laser horizontal : un avertissement, puis un faisceau actif, puis il disparaît (phases WARNING, ACTIVE, DONE). */
+public class Laser extends Obstacle {
+
+    /** Épaisseur du faisceau, en pixels. */
+    public static final double THICKNESS = 48;
+    /** Durée de l'avertissement avant que le faisceau devienne actif, en secondes. */
+    public static final double WARNING_TIME = 1.2;
+    /** Durée pendant laquelle le faisceau est actif, en secondes. */
+    public static final double ACTIVE_TIME = 1.0;
+
+    private static final double URGENT_TIME = 0.4;
+    private static final String BEAM = &quot;laserbeam.png&quot;;
+    private static final String EMITTER = &quot;laseremitter.png&quot;;
+    private static final String MUZZLE = &quot;laserfiring.png&quot;;
+    private static final double BEAM_SCALE = 1.4;
+    private static final double BEAM_CENTER_ROW = 18.5;
+    private static final double BEAM_SCROLL = 900;
+    private static final double MUZZLE_SCALE = 1.6;
+    private static final double MUZZLE_CENTER_ROW = 49.5;
+    private static final double EMITTER_SCALE = 1.5;
+
+<span class="fc" id="L31">    private enum Phase {</span>
+<span class="fc" id="L32">        WARNING,</span>
+<span class="fc" id="L33">        ACTIVE,</span>
+<span class="fc" id="L34">        DONE</span>
+    }
+
+<span class="fc" id="L37">    private Phase phase = Phase.WARNING;</span>
+    private double timer;
+
+    /**
+     * Crée un laser.
+     *
+     * @param y position verticale du faisceau
+     * @param speed vitesse de jeu partagée
+     */
+    public Laser(double y, GameSpeed speed) {
+<span class="fc" id="L47">        super(0, y, App.WIDTH, THICKNESS, speed);</span>
+<span class="fc" id="L48">    }</span>
+
+    @Override
+    public ObstacleType getType() {
+<span class="fc" id="L52">        return ObstacleType.LASER;</span>
+    }
+
+    /**
+     * @return true si le laser est en phase d'avertissement
+     */
+    public boolean isWarning() {
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        return phase == Phase.WARNING;</span>
+    }
+
+    /**
+     * @return true si le faisceau est actif (dangereux)
+     */
+    public boolean isActive() {
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">        return phase == Phase.ACTIVE;</span>
+    }
+
+    /**
+     * @return true si le laser a fini son cycle
+     */
+    public boolean isDone() {
+<span class="fc bfc" id="L73" title="All 2 branches covered.">        return phase == Phase.DONE;</span>
+    }
+
+    @Override
+    public void update(double dt) {
+<span class="fc" id="L78">        timer += dt;</span>
+<span class="fc bfc" id="L79" title="All 4 branches covered.">        if (phase == Phase.WARNING &amp;&amp; timer &gt;= WARNING_TIME) {</span>
+<span class="fc" id="L80">            timer -= WARNING_TIME;</span>
+<span class="fc" id="L81">            phase = Phase.ACTIVE;</span>
+        }
+<span class="fc bfc" id="L83" title="All 4 branches covered.">        if (phase == Phase.ACTIVE &amp;&amp; timer &gt;= ACTIVE_TIME) {</span>
+<span class="fc" id="L84">            phase = Phase.DONE;</span>
+        }
+<span class="fc" id="L86">    }</span>
+
+    @Override
+    public boolean collidesWith(Hitbox other) {
+<span class="fc bfc" id="L90" title="All 4 branches covered.">        return phase == Phase.ACTIVE &amp;&amp; super.collidesWith(other);</span>
+    }
+
+    @Override
+    public void onCollision(Player player) {
+<span class="fc bfc" id="L95" title="All 2 branches covered.">        if (phase == Phase.ACTIVE) {</span>
+<span class="fc" id="L96">            super.onCollision(player);</span>
+        }
+<span class="fc" id="L98">    }</span>
+
+    @Override
+    public boolean isOffScreen() {
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        return phase == Phase.DONE;</span>
+    }
+
+    @Override
+    public void reset(double x, double y) {
+<span class="fc" id="L107">        super.reset(0, y);</span>
+<span class="fc" id="L108">        phase = Phase.WARNING;</span>
+<span class="fc" id="L109">        timer = 0;</span>
+<span class="fc" id="L110">    }</span>
+
+    @Override
+    public void render(GraphicsContext gc) {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (phase == Phase.WARNING) {</span>
+<span class="nc" id="L115">            renderWarning(gc);</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        } else if (phase == Phase.ACTIVE) {</span>
+<span class="nc" id="L117">            renderBeam(gc);</span>
+        }
+<span class="nc" id="L119">    }</span>
+
+    private void renderWarning(GraphicsContext gc) {
+<span class="nc" id="L122">        double centerY = y + height / 2;</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        boolean urgent = timer &gt;= WARNING_TIME - URGENT_TIME;</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        int blink = (int) (timer * (urgent ? 14 : 6));</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        gc.setGlobalAlpha(blink % 2 == 0 ? 0.35 : 0.95);</span>
+<span class="nc" id="L126">        gc.setStroke(Color.RED);</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        gc.setLineWidth(urgent ? 6 : 3);</span>
+<span class="nc" id="L128">        gc.strokeLine(0, centerY, App.WIDTH, centerY);</span>
+<span class="nc" id="L129">        gc.setGlobalAlpha(1);</span>
+<span class="nc" id="L130">        drawEmitter(gc, centerY, false);</span>
+<span class="nc" id="L131">        drawEmitter(gc, centerY, true);</span>
+<span class="nc" id="L132">    }</span>
+
+    private void renderBeam(GraphicsContext gc) {
+<span class="nc" id="L135">        Image muzzle = Sprites.get(MUZZLE);</span>
+<span class="nc" id="L136">        double centerY = y + height / 2;</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        double beamStart = muzzle == null ? 0 : muzzle.getWidth() * MUZZLE_SCALE;</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        if (isSpent()) {</span>
+<span class="nc" id="L139">            gc.setGlobalAlpha(0.45);</span>
+        }
+<span class="nc" id="L141">        drawBeamBody(gc, Sprites.get(BEAM), beamStart, centerY);</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (muzzle != null) {</span>
+<span class="nc" id="L143">            gc.drawImage(muzzle, 0, centerY - MUZZLE_CENTER_ROW * MUZZLE_SCALE,</span>
+<span class="nc" id="L144">                muzzle.getWidth() * MUZZLE_SCALE, muzzle.getHeight() * MUZZLE_SCALE);</span>
+        }
+<span class="nc" id="L146">        drawEmitter(gc, centerY, true);</span>
+<span class="nc" id="L147">        gc.setGlobalAlpha(1);</span>
+<span class="nc" id="L148">    }</span>
+
+    private void drawBeamBody(GraphicsContext gc, Image beam, double start, double centerY) {
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        if (beam == null) {</span>
+<span class="nc" id="L152">            gc.setFill(beamGradient());</span>
+<span class="nc" id="L153">            gc.fillRect(start - 1, y, App.WIDTH - start + 1, height);</span>
+<span class="nc" id="L154">            return;</span>
+        }
+<span class="nc" id="L156">        double tile = beam.getWidth() * BEAM_SCALE;</span>
+<span class="nc" id="L157">        double drawHeight = beam.getHeight() * BEAM_SCALE;</span>
+<span class="nc" id="L158">        double top = centerY - BEAM_CENTER_ROW * BEAM_SCALE;</span>
+<span class="nc" id="L159">        double shift = (timer * BEAM_SCROLL) % tile;</span>
+<span class="nc" id="L160">        gc.save();</span>
+<span class="nc" id="L161">        gc.beginPath();</span>
+<span class="nc" id="L162">        gc.rect(start - 1, top, App.WIDTH - start + 1, drawHeight);</span>
+<span class="nc" id="L163">        gc.clip();</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        for (double x = start - shift; x &lt; App.WIDTH; x += tile) {</span>
+<span class="nc" id="L165">            gc.drawImage(beam, x, top, tile + 1, drawHeight);</span>
+        }
+<span class="nc" id="L167">        gc.restore();</span>
+<span class="nc" id="L168">    }</span>
+
+    private void drawEmitter(GraphicsContext gc, double centerY, boolean right) {
+<span class="nc" id="L171">        Image emitter = Sprites.get(EMITTER);</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        if (emitter == null) {</span>
+<span class="nc" id="L173">            return;</span>
+        }
+<span class="nc" id="L175">        double w = emitter.getWidth() * EMITTER_SCALE;</span>
+<span class="nc" id="L176">        double h = emitter.getHeight() * EMITTER_SCALE;</span>
+<span class="nc" id="L177">        gc.save();</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        if (right) {</span>
+<span class="nc" id="L179">            gc.translate(App.WIDTH, centerY - h / 2);</span>
+<span class="nc" id="L180">            gc.scale(-1, 1);</span>
+        } else {
+<span class="nc" id="L182">            gc.translate(0, centerY - h / 2);</span>
+        }
+<span class="nc" id="L184">        gc.drawImage(emitter, 0, 0, w, h);</span>
+<span class="nc" id="L185">        gc.restore();</span>
+<span class="nc" id="L186">    }</span>
+
+    private LinearGradient beamGradient() {
+<span class="nc" id="L189">        return new LinearGradient(0, y, 0, y + height, false, CycleMethod.NO_CYCLE,</span>
+<span class="nc" id="L190">            new Stop(0.00, Color.rgb(255, 0, 0)),</span>
+<span class="nc" id="L191">            new Stop(0.17, Color.rgb(255, 230, 120)),</span>
+<span class="nc" id="L192">            new Stop(0.33, Color.rgb(254, 255, 224)),</span>
+<span class="nc" id="L193">            new Stop(0.50, Color.rgb(255, 255, 252)),</span>
+<span class="nc" id="L194">            new Stop(0.67, Color.rgb(253, 253, 136)),</span>
+<span class="nc" id="L195">            new Stop(0.83, Color.rgb(255, 47, 17)),</span>
+<span class="nc" id="L196">            new Stop(1.00, Color.rgb(255, 0, 0, 0)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
